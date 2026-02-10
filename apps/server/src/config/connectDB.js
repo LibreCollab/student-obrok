@@ -5,7 +5,7 @@ const connectDB = async () => {
   try {
     await mongoose.connect(process.env.DATABASE_URI);
 
-    const existingUser = await UserModel.findOne({ username: "uss" }).exec();
+    const existingUser = await UserModel.findOne({ username: process.env.ADMIN_USERNAME }).exec();
 
     if (!existingUser) {
       // Create the user if not found

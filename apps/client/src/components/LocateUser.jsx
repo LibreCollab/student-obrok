@@ -47,6 +47,7 @@ const LocateUser = ({ onUserLocation, setIsLoading, disableRouting }) => {
   const userIcon = L.icon({
     iconUrl: myLocationMarker,
     iconSize: [38, 95],
+    className: "white-marker"
   });
 
   return position === null ? null : (

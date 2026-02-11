@@ -6,3 +6,7 @@
 .leaflet-control-container .leaflet-routing-container-hide {
   display: none;
 }
+
+.white-marker {
+  filter: invert(1) brightness(2);
+}

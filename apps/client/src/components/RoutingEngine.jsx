@@ -4,32 +4,37 @@ import L from "leaflet";
 import "leaflet-routing-machine";
 import { OSRM_URL } from "../api/consts";
 
-const RoutingEngine = ({ start, end }) => {
+const RoutingEngine = ({ start, end, mode }) => {
   const map = useMap();
   const routingControl = useRef(null);
 
   useEffect(() => {
     if (start && end) {
+      if (routingControl.current) {
+        map.removeControl(routingControl.current);
+      }
+
+      const profileMap = {
+        walking: "foot",
+        car: "car",
+        cycling: "bicycle",
+      };
+
       routingControl.current = L.Routing.control({
         waypoints: [L.latLng(start), L.latLng(end)],
         lineOptions: {
           styles: [{ color: "#6FA1EC", weight: 5 }],
         },
         router: L.Routing.osrmv1({
-          serviceUrl: OSRM_URL
+          serviceUrl: OSRM_URL,
+          profile: profileMap[mode] || "foot",
         }),
-        createMarker: function () {
-          return null;
-        },
-        createControl: function () {
-          return null;
-        },
-        show: false,
-        routeWhileDragging: true,
+        createMarker: () => null,
+        addWaypoints: false,
         draggableWaypoints: false,
         fitSelectedRoutes: true,
         showAlternatives: false,
-        collapsible: false,
+        show: false,
       }).addTo(map);
     }
 
@@ -38,8 +43,7 @@ const RoutingEngine = ({ start, end }) => {
         map.removeControl(routingControl.current);
       }
     };
-  }, [map, start, end]);
-
+  }, [map, start, end, mode]);
   return null;
 };
 

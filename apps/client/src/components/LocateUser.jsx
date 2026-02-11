@@ -10,26 +10,14 @@ const LocateUser = ({ onUserLocation, setIsLoading, disableRouting }) => {
   const watchIdRef = useRef(null);
   const deadlineTimerRef = useRef(null);
 
-  useEffect(() => {
-    if (!navigator.geolocation) {
-      setIsLoading(false);
-      disableRouting();
-      return;
+  const startWatching = (highAccuracy) => {
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
     }
 
-    setIsLoading(true);
-
-    deadlineTimerRef.current = setTimeout(() => {
-      if (firstFlyBy.current) {
-        console.log("Deadline reached: Showing map without user location.");
-        setIsLoading(false);
-        disableRouting();
-      }
-    }, 7000);
-
     const options = {
-      enableHighAccuracy: true,
-      timeout: 10000,
+      enableHighAccuracy: highAccuracy,
+      timeout: highAccuracy ? 5000 : 10000,
       maximumAge: 0,
     };
 
@@ -42,27 +30,62 @@ const LocateUser = ({ onUserLocation, setIsLoading, disableRouting }) => {
         onUserLocation(newPos);
 
         if (firstFlyBy.current) {
-          clearTimeout(deadlineTimerRef.current)
+          clearTimeout(deadlineTimerRef.current);
           setIsLoading(false);
           map.flyTo(newPos, map.getZoom());
           firstFlyBy.current = false;
         }
       },
       (error) => {
-        console.warn("Geolocation error:", error.message);
-        clearTimeout(deadlineTimerRef.current);
-        setIsLoading(false);
-        disableRouting();
+        console.warn(
+          `Location error (HighAccuracy: ${highAccuracy}):`,
+          error.message,
+        );
+
+        if (
+          highAccuracy &&
+          (error.code === error.TIMEOUT ||
+            error.code === error.POSITION_UNAVAILABLE)
+        ) {
+          console.log("Switching to low accuracy fallback...");
+          startWatching(false);
+        } else {
+          if (firstFlyBy.current) {
+            clearTimeout(deadlineTimerRef.current);
+            setIsLoading(false);
+            disableRouting();
+          }
+        }
       },
       options,
     );
+  };
+
+  useEffect(() => {
+    if (!navigator.geolocation) {
+      setIsLoading(false);
+      disableRouting();
+      return;
+    }
+
+    setIsLoading(true);
+
+    deadlineTimerRef.current = setTimeout(() => {
+      if (firstFlyBy.current) {
+        console.log("Deadline reached: Showing map anyway.");
+        setIsLoading(false);
+        disableRouting();
+      }
+    }, 8000);
+
+    startWatching(true);
 
     return () => {
       if (watchIdRef.current !== null)
         navigator.geolocation.clearWatch(watchIdRef.current);
       if (deadlineTimerRef.current) clearTimeout(deadlineTimerRef.current);
     };
-  }, [map, onUserLocation, setIsLoading, disableRouting]);
+  }, [map]);
 
   const userIcon = L.icon({
     iconUrl: myLocationMarker,

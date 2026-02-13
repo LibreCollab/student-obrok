@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import { Marker, Popup } from "react-map-gl/maplibre";
 import axios from "../api/axios";
 import { Button, Typography, Box, styled } from "@mui/material";
@@ -20,6 +20,7 @@ const VendorMarkers = ({
   const [bounds, setBounds] = useState(null);
   const [zoom, setZoom] = useState(16);
   const { current: map } = useMap();
+  const updateTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (!map) return;
@@ -29,11 +30,24 @@ const VendorMarkers = ({
       setZoom(map.getZoom());
     };
 
+    const throttledUpdate = () => {
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
+      updateTimeoutRef.current = setTimeout(updateMapState, 50);
+    };
+
     updateMapState();
-    map.on("moveend", updateMapState);
+
+    map.on("move", throttledUpdate);
+    map.on("zoom", updateMapState);
 
     return () => {
-      map.off("moveend", updateMapState);
+      map.off("move", throttledUpdate);
+      map.off("zoom", updateMapState);
+      if (updateTimeoutRef.current) {
+        clearTimeout(updateTimeoutRef.current);
+      }
     };
   }, [map]);
 
@@ -88,7 +102,13 @@ const VendorMarkers = ({
     points,
     bounds,
     zoom,
-    options: { radius: 75, maxZoom: 20 },
+    options: {
+      radius: 60,
+      maxZoom: 20,
+      minZoom: 0,
+      extent: 512,
+      nodeSize: 64,
+    },
   });
 
   return (
@@ -115,7 +135,7 @@ const VendorMarkers = ({
                     map?.flyTo({
                       center: [longitude, latitude],
                       zoom: expansionZoom,
-                      duration: 500,
+                      duration: 300,
                     });
                   }}
                   style={{
@@ -201,8 +221,8 @@ const ClusterMarker = styled("div")(({ pointCount }) => ({
   border: "2px solid white",
   boxShadow: "0 0 10px rgba(0,0,0,0.3)",
 
-  transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-  animation: "clusterPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+  transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+  animation: "clusterPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
 
   "&:hover": {
     transform: "scale(1.15)",
@@ -247,8 +267,8 @@ const VendorMarkerImage = styled("img")(({ verticalOffset }) => ({
   cursor: "pointer",
   transform: `translateY(${verticalOffset}px)`,
 
-  transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-  animation: "markerDrop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
+  transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
+  animation: "markerDrop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
 
   "&:hover": {
     transform: `translateY(${verticalOffset}px) scale(1.1)`,

@@ -21,7 +21,7 @@ const DealSearchBar = ({ theme, handleSearchChange }) => {
           color: "black",
         },
         width: isSmallScreen ? "212px" : "20%",
-        marginTop: isSmallScreen && "5vh",
+        marginTop: isSmallScreen ? "5vh" : 0,
         marginLeft: "1vw",
         justifyContent: "end",
       }}

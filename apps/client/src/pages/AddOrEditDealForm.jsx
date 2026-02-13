@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import ReactQuill from "react-quill-new";
 import {
   Button,
-  Grid,
   TextField,
   Box,
   Paper,
@@ -42,6 +41,7 @@ const AddOrEditDealForm = () => {
   const [selectedVendorId, setSelectedVendorId] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
   const modules = {
     toolbar: [
       [{ header: [1, 2, 3, 4, 5, 6, false] }],
@@ -59,21 +59,13 @@ const AddOrEditDealForm = () => {
 
   const handleChange = (event) => {
     if (event.target === undefined) {
-      return setDeal({
-        ...deal,
-        description: `${event}`,
-      });
+      return setDeal({ ...deal, description: `${event}` });
     }
-
     const { name, value } = event.target;
-
     if (name === "vendor") {
       setSelectedVendorId(value);
     } else {
-      setDeal({
-        ...deal,
-        [name]: value,
-      });
+      setDeal({ ...deal, [name]: value });
     }
   };
 
@@ -122,46 +114,33 @@ const AddOrEditDealForm = () => {
     };
   }, []);
 
-  const handleCancel = () => {
-    navigate("/dashboard");
-  };
+  const handleCancel = () => navigate("/dashboard");
 
   const transformDealData = () => {
     let dealData = {};
-
     if (params?.dealId) dealData.id = params.dealId;
     if (deal.title) dealData.title = deal.title;
     if (deal.description) dealData.description = deal.description;
     if (deal.price) dealData.price = deal.price;
     if (deal?.image) dealData.image = deal.image;
     if (deal?.imageTitle) dealData.imageTitle = deal.imageTitle;
-
     return dealData;
   };
 
   const handleSubmit = async (event) => {
     event.preventDefault();
-
     const transformedData = transformDealData();
-
-    if (selectedVendorId) {
-      transformedData.vendor = selectedVendorId;
-    }
-
-    if (params?.dealId) {
-      try {
-        await axiosPrivate.put("/deals", transformedData);
-        return navigate("/dashboard");
-      } catch (error) {
-        return console.error(error);
-      }
-    }
+    if (selectedVendorId) transformedData.vendor = selectedVendorId;
 
     try {
-      await axiosPrivate.post("/deals", transformedData);
+      if (params?.dealId) {
+        await axiosPrivate.put("/deals", transformedData);
+      } else {
+        await axiosPrivate.post("/deals", transformedData);
+      }
       return navigate("/dashboard");
     } catch (error) {
-      setErrorBag(error.response.data.message);
+      setErrorBag(error.response?.data?.message || "Error saving deal");
     }
   };
 
@@ -169,7 +148,6 @@ const AddOrEditDealForm = () => {
     const file = e.target.files[0];
     const fileName = file.name;
     const convertedImage = await convertToBase64(file);
-
     setDeal({ ...deal, image: convertedImage, imageTitle: fileName });
   };
 
@@ -181,12 +159,8 @@ const AddOrEditDealForm = () => {
     return new Promise((resolve, reject) => {
       const fileReader = new FileReader();
       fileReader.readAsDataURL(file);
-      fileReader.onload = () => {
-        resolve(fileReader.result);
-      };
-      fileReader.onerror = (error) => {
-        reject(error);
-      };
+      fileReader.onload = () => resolve(fileReader.result);
+      fileReader.onerror = (error) => reject(error);
     });
   };
 
@@ -202,132 +176,116 @@ const AddOrEditDealForm = () => {
             flexDirection="column"
             justifyContent={isSmallScreen ? "flex-start" : "center"}
             alignItems="center"
-            height={isSmallScreen ? "65vh" : "85vh"}
-            marginBottom={isSmallScreen && 5}
+            minHeight={isSmallScreen ? "65vh" : "85vh"}
+            paddingY={5}
           >
-            <Container maxWidth="md" sx={{ maxHeight: "90%", marginTop: 10 }}>
+            <Container maxWidth="md">
               <form autoComplete="off" onSubmit={handleSubmit}>
                 <DealForm elevation={5}>
-                  <Grid container spacing={3} justify="center">
-                    <Grid item xs={12}>
+                  <Box
+                    display="flex"
+                    flexDirection="column"
+                    gap={3}
+                    width="100%"
+                  >
+                    <Box width="100%">
                       {errorBag === "Title is required!" && (
                         <Typography sx={{ color: "crimson" }}>
                           {errorBag}
                         </Typography>
                       )}
                       <TextField
-                        id="title"
                         name="title"
                         label="Title"
                         variant="outlined"
                         fullWidth
                         value={deal?.title || ""}
+                        onChange={handleChange}
                         sx={{
                           "& .MuiOutlinedInput-root": {
-                            "&.Mui-focused fieldset": {
-                              borderColor: "black",
-                            },
+                            "&.Mui-focused fieldset": { borderColor: "black" },
                           },
-                          "& label.Mui-focused": {
-                            color: "black",
-                          },
+                          "& label.Mui-focused": { color: "black" },
                         }}
-                        onChange={handleChange}
                       />
-                    </Grid>
-                    <Grid item xs={12}>
-                      {errorBag === "Price is required!" && (
-                        <Typography sx={{ color: "crimson" }}>
-                          {errorBag}
-                        </Typography>
-                      )}
-                      <TextField
-                        id="price"
-                        name="price"
-                        label="Price"
-                        variant="outlined"
-                        type="number"
-                        value={deal?.price || ""}
-                        sx={{
-                          "& .MuiOutlinedInput-root": {
-                            "&.Mui-focused fieldset": {
-                              borderColor: "black",
-                            },
-                          },
-                          "& label.Mui-focused": {
-                            color: "black",
-                          },
-                        }}
-                        fullWidth
-                        onChange={handleChange}
-                      />
-                    </Grid>
-                    <Grid item xs={12}>
-                      {errorBag ===
-                        ("Vendor is required!" ||
-                          "Vendor can't be changed.") && (
-                        <Typography sx={{ color: "crimson" }}>
-                          {errorBag}
-                        </Typography>
-                      )}
-                      <FormControl fullWidth>
-                        <InputLabel
-                          id="vendor-select-label"
-                          sx={{
-                            "&.Mui-focused": {
-                              color: "black",
-                            },
-                            marginTop: !!selectedVendorId && "-8px",
-                          }}
-                          shrink={!!selectedVendorId}
-                        >
-                          Vendor
-                        </InputLabel>
-                        <Select
-                          labelId="vendor-select-label"
-                          id="vendor-select"
-                          name="vendor"
-                          value={selectedVendorId || ""}
-                          onChange={handleChange}
-                          disabled={isEditing}
-                          sx={{
-                            "&:hover .MuiOutlinedInput-notchedOutline": {
-                              borderColor: !isEditing && "black",
-                            },
-                            "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
-                              borderColor: "black",
-                            },
-                            "&:hover .Mui-disabled": {
-                              cursor: "not-allowed",
-                            },
-                          }}
-                        >
-                          {vendors.map((vendor) => (
-                            <MenuItem key={vendor._id} value={vendor._id}>
-                              {vendor.name}
-                            </MenuItem>
-                          ))}
-                        </Select>
-                      </FormControl>
-                    </Grid>
-                    {deal?.imageTitle && (
-                      <Grid item xs={12}>
+                    </Box>
+                    <Box
+                      display="flex"
+                      gap={3}
+                      width="100%"
+                      sx={{ flexDirection: { xs: "column", sm: "row" } }}
+                    >
+                      <Box flex={1}>
+                        {errorBag === "Price is required!" && (
+                          <Typography sx={{ color: "crimson" }}>
+                            {errorBag}
+                          </Typography>
+                        )}
                         <TextField
-                          id="image"
-                          label="Cover Image"
+                          name="price"
+                          label="Price"
                           variant="outlined"
-                          type="text"
-                          value={deal?.imageTitle || ""}
+                          type="number"
+                          fullWidth
+                          value={deal?.price || ""}
+                          onChange={handleChange}
                           sx={{
                             "& .MuiOutlinedInput-root": {
                               "&.Mui-focused fieldset": {
                                 borderColor: "black",
                               },
                             },
-                            "& label.Mui-focused": {
-                              color: "black",
-                            },
+                            "& label.Mui-focused": { color: "black" },
                           }}
+                        />
+                      </Box>
+
+                      <Box flex={1}>
+                        {errorBag &&
+                          (errorBag.includes("Vendor") ? (
+                            <Typography sx={{ color: "crimson" }}>
+                              {errorBag}
+                            </Typography>
+                          ) : null)}
+                        <FormControl fullWidth>
+                          <InputLabel
+                            id="vendor-select-label"
+                            sx={{
+                              "&.Mui-focused": { color: "black" },
+                            }}
+                          >
+                            Vendor
+                          </InputLabel>
+                          <Select
+                            labelId="vendor-select-label"
+                            name="vendor"
+                            value={selectedVendorId || ""}
+                            label="Vendor"
+                            onChange={handleChange}
+                            disabled={isEditing}
+                            fullWidth
+                            sx={{
+                              "&.Mui-focused .MuiOutlinedInput-notchedOutline":
+                                {
+                                  borderColor: "black",
+                                },
+                            }}
+                          >
+                            {vendors.map((vendor) => (
+                              <MenuItem key={vendor._id} value={vendor._id}>
+                                {vendor.name}
+                              </MenuItem>
+                            ))}
+                          </Select>
+                        </FormControl>
+                      </Box>
+                    </Box>
+                    {deal?.imageTitle && (
+                      <Box width="100%">
+                        <TextField
+                          label="Cover Image"
+                          variant="outlined"
+                          value={deal?.imageTitle || ""}
                           fullWidth
                           disabled
                           InputProps={{
@@ -338,9 +296,9 @@ const AddOrEditDealForm = () => {
                             ),
                           }}
                         />
-                      </Grid>
+                      </Box>
                     )}
-                    <Grid item xs={12}>
+                    <Box width="100%">
                       {errorBag === "Cover image is required!" && (
                         <Typography sx={{ color: "crimson" }}>
                           {errorBag}
@@ -351,39 +309,35 @@ const AddOrEditDealForm = () => {
                         onDeleteFile={onDeleteFileHandler}
                         accept={".jpeg, .jpg, .png, .webp"}
                       />
-                    </Grid>
-                    <Grid item xs={12}>
+                    </Box>
+                    <Box width="100%">
                       {errorBag === "Description is required!" && (
                         <Typography sx={{ color: "crimson" }}>
                           {errorBag}
                         </Typography>
                       )}
-                      <div className="editor">
+                      <QuillWrapper>
                         <ReactQuill
-                          id="description"
                           value={deal?.description || ""}
                           onChange={(event) => handleChange(event)}
-                          name="description"
                           theme="snow"
-                          className="editor-input"
                           modules={modules}
                         />
-                      </div>
-                    </Grid>
-                  </Grid>
+                      </QuillWrapper>
+                    </Box>
+                  </Box>
                 </DealForm>
-                <Grid item xs={12} container justifyContent="flex-end">
-                  <CancelButton variant="text" onClick={() => handleCancel()}>
+
+                <Box
+                  sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}
+                >
+                  <CancelButton variant="text" onClick={handleCancel}>
                     <CloseIcon sx={{ marginRight: "5px" }} /> Cancel
                   </CancelButton>
-                  <AddDealButton
-                    variant="contained"
-                    color="primary"
-                    type="submit"
-                  >
+                  <AddDealButton variant="contained" type="submit">
                     <SaveIcon sx={{ marginRight: "5px" }} /> Submit
                   </AddDealButton>
-                </Grid>
+                </Box>
               </form>
             </Container>
           </Box>
@@ -394,31 +348,54 @@ const AddOrEditDealForm = () => {
 };
 
 const DealForm = styled(Paper)(({ theme }) => ({
-  padding: useMediaQuery(theme.breakpoints.down("sm")) ? 25 : 50,
+  padding: 50,
   marginBottom: 25,
-
-  // Galaxy Fold
-  [`@media (min-width: 280px) and (max-width: 280px) and 
- (min-height: 653px) and (max-height: 653px)`]: {
-    padding: 25,
-  },
+  [theme.breakpoints.down("sm")]: { padding: 25 },
 }));
 
-const AddDealButton = styled(Button)(({ theme }) => ({
+const AddDealButton = styled(Button)(() => ({
   textTransform: "none",
   backgroundColor: "black",
-  marginBottom: 20,
-
-  "&:hover": {
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-  },
+  "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.8)" },
 }));
 
-const CancelButton = styled(Button)(({ theme }) => ({
+const CancelButton = styled(Button)(() => ({
   color: "black",
   textTransform: "none",
-  marginRight: "1vw",
-  marginBottom: 20,
+}));
+
+const QuillWrapper = styled(Box)(({ theme }) => ({
+  width: "100%",
+  "& .quill": {
+    height: "100%",
+    display: "flex",
+    flexDirection: "column",
+  },
+  "& .ql-container": {
+    flexGrow: 1,
+    overflow: "auto",
+  },
+  height: "250px",
+  marginBottom: "3vh",
+  [theme.breakpoints.down("md")]: {
+    height: "250px",
+    marginBottom: "10vh",
+  },
+  "@media (min-width: 375px) and (max-width: 375px) and (min-height: 667px) and (max-height: 667px)":
+    {
+      height: "250px",
+      marginBottom: "10vh",
+    },
+  "@media (min-width: 360px) and (max-width: 360px) and (min-height: 740px) and (max-height: 740px)":
+    {
+      height: "250px",
+      marginBottom: "12vh",
+    },
+  "@media (min-width: 768px) and (max-width: 768px) and (min-height: 1024px) and (max-height: 1024px)":
+    {
+      height: "250px",
+      marginBottom: "5vh",
+    },
 }));
 
 export default AddOrEditDealForm;

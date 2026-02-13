@@ -1,12 +1,31 @@
-.leaflet-container {
-  height: 100vh;
-  width: 100vw;
+.maplibregl-popup-close-button {
+  width: 28px !important;
+  height: 28px !important;
+  font-size: 24px !important;
+  line-height: 28px !important;
+  color: #333 !important;
+  background: transparent !important;
+  border: none !important;
+  cursor: pointer !important;
+  padding: 0 !important;
+  right: 8px !important;
+  top: 8px !important;
+  transition: all 0.2s ease !important;
 }
 
-.leaflet-control-container .leaflet-routing-container-hide {
-  display: none;
+.maplibregl-popup-close-button:hover {
+  color: crimson !important;
+  transform: scale(1.1) !important;
+  background: rgba(220, 20, 60, 0.1) !important;
+  border-radius: 50% !important;
 }
 
-.white-marker {
-  filter: invert(1) brightness(2);
+.maplibregl-popup-close-button:active {
+  transform: scale(0.95) !important;
+}
+
+.maplibregl-popup-content {
+  padding: 15px !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
 }

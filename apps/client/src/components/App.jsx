@@ -2,7 +2,6 @@ import React from "react";
 import { Routes, Route } from "react-router-dom";
 import NotFound from "../pages/NotFound";
 import Login from "../pages/Login";
-import Map from "../pages/Map";
 import Dashboard from "../pages/Dashboard";
 import RequireAuth from "./RequireAuth";
 import AddOrEditDealForm from "../pages/AddOrEditDealForm";
@@ -10,6 +9,7 @@ import Layout from "./Layout";
 import PersistLogin from "./PersistLogin";
 import AddOrEditVendorForm from "../pages/AddOrEditVendorForm";
 import VendorDeals from "../pages/VendorDeals";
+import Home from "../pages/Home";
 
 const App = () => {
   return (
@@ -17,7 +17,7 @@ const App = () => {
       <Route path="/" element={<Layout />}>
         <Route path="/login" element={<Login />} />
         <Route element={<PersistLogin />}>
-          <Route path="/" element={<Map />} />
+          <Route path="/" element={<Home />} />
           <Route element={<RequireAuth />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route

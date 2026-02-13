@@ -1,10 +1,12 @@
 import React, { useEffect, useState, useRef } from "react";
-import { Marker, useMap } from "react-leaflet";
-import L from "leaflet";
-import myLocationMarker from "../assets/icons/my_location_marker.svg";
+import { Marker } from "react-map-gl/maplibre";
 
-const LocateUser = ({ onUserLocation, setIsLoading, disableRouting }) => {
-  const map = useMap();
+const LocateUser = ({
+  mapRef,
+  onUserLocation,
+  setIsLoading,
+  disableRouting,
+}) => {
   const [position, setPosition] = useState(null);
   const firstFlyBy = useRef(true);
   const watchIdRef = useRef(null);
@@ -24,7 +26,7 @@ const LocateUser = ({ onUserLocation, setIsLoading, disableRouting }) => {
     watchIdRef.current = navigator.geolocation.watchPosition(
       (pos) => {
         const { latitude, longitude } = pos.coords;
-        const newPos = [latitude, longitude];
+        const newPos = [longitude, latitude]; // MapLibre uses [lng, lat]
 
         setPosition(newPos);
         onUserLocation(newPos);
@@ -32,7 +34,12 @@ const LocateUser = ({ onUserLocation, setIsLoading, disableRouting }) => {
         if (firstFlyBy.current) {
           clearTimeout(deadlineTimerRef.current);
           setIsLoading(false);
-          map.flyTo(newPos, map.getZoom());
+
+          mapRef.current?.flyTo({
+            center: newPos,
+            duration: 1000,
+          });
+
           firstFlyBy.current = false;
         }
       },
@@ -85,17 +92,21 @@ const LocateUser = ({ onUserLocation, setIsLoading, disableRouting }) => {
         navigator.geolocation.clearWatch(watchIdRef.current);
       if (deadlineTimerRef.current) clearTimeout(deadlineTimerRef.current);
     };
-  }, [map]);
-
-  const userIcon = L.icon({
-    iconUrl: myLocationMarker,
-    iconSize: [38, 95],
-    className: "white-marker",
-    iconAnchor: [19, 95],
-  });
+  }, []);
 
   return position === null ? null : (
-    <Marker position={position} icon={userIcon} />
+    <Marker longitude={position[0]} latitude={position[1]}>
+      <div
+        style={{
+          width: 20,
+          height: 20,
+          borderRadius: "50%",
+          backgroundColor: "#4285F4",
+          border: "3px solid white",
+          boxShadow: "0 0 10px rgba(0,0,0,0.3)",
+        }}
+      />
+    </Marker>
   );
 };
 

@@ -1,17 +1,43 @@
-import React, { useEffect, useState } from "react";
-import { Marker, Popup } from "react-leaflet";
+import React, { useEffect, useState, useMemo } from "react";
+import { Marker, Popup } from "react-map-gl/maplibre";
 import axios from "../api/axios";
 import { Button, Typography, Box, styled } from "@mui/material";
 import ArrowRightAltIcon from "@mui/icons-material/ArrowRightAlt";
 import MapDealInfoModal from "./MapDealInfoModal";
-import L from "leaflet";
 import vendorlocationMarker from "../assets/icons/vendor_location_marker.svg";
-import MarkerClusterGroup from "react-leaflet-cluster";
+import useSupercluster from "use-supercluster";
+import { useMap } from "react-map-gl/maplibre";
 
-const VendorMarkers = ({ onVendorLocation, isDisabledRoutingButton }) => {
+const VendorMarkers = ({
+  onVendorLocation,
+  isDisabledRoutingButton,
+  pitch,
+}) => {
   const [vendors, setVendors] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [_, setError] = useState("");
+  const [selectedVendor, setSelectedVendor] = useState(null);
+  const [bounds, setBounds] = useState(null);
+  const [zoom, setZoom] = useState(16);
+  const { current: map } = useMap();
+
+  useEffect(() => {
+    if (!map) return;
+
+    const updateMapState = () => {
+      setBounds(map.getBounds().toArray().flat());
+      setZoom(map.getZoom());
+    };
+
+    updateMapState();
+    map.on("moveend", updateMapState);
+
+    return () => {
+      map.off("moveend", updateMapState);
+    };
+  }, [map]);
+
+  const verticalOffset = useMemo(() => pitch * 0.8, [pitch]);
 
   useEffect(() => {
     let isMounted = true;
@@ -20,21 +46,16 @@ const VendorMarkers = ({ onVendorLocation, isDisabledRoutingButton }) => {
 
     const fetchVendors = async () => {
       try {
-        const response = await axios.get(
-          "/vendors",
-          {
-            signal: controller.signal,
-          },
-          {
-            headers: { "Content-Type": "application/json" },
-            withCredentials: true,
-          }
-        );
+        const response = await axios.get("/vendors", {
+          signal: controller.signal,
+          headers: { "Content-Type": "application/json" },
+          withCredentials: true,
+        });
         isMounted && setVendors(response.data);
         setIsLoading(false);
       } catch (error) {
-        setError(error.response.data.message);
-        navigate("/login", { state: { from: location }, replace: true });
+        setError(error.response?.data?.message || "Error loading vendors");
+        setIsLoading(false);
       }
     };
 
@@ -42,61 +63,217 @@ const VendorMarkers = ({ onVendorLocation, isDisabledRoutingButton }) => {
 
     return () => {
       isMounted = false;
-      setIsLoading(false);
       controller.abort();
     };
   }, []);
 
-  const vendorIcon = L.icon({
-    iconUrl: vendorlocationMarker,
-    iconSize: [38, 95],
-  });
+  const points = useMemo(
+    () =>
+      vendors.map((vendor, index) => ({
+        type: "Feature",
+        properties: {
+          cluster: false,
+          vendorId: index,
+          vendor: vendor,
+        },
+        geometry: {
+          type: "Point",
+          coordinates: [vendor.location[1], vendor.location[0]],
+        },
+      })),
+    [vendors],
+  );
 
-  const clusterIcon = (cluster) => {
-    return L.divIcon({
-      html: `<div style="height: 2rem; width: 2rem; border-radius: 50%; background-color: crimson; color: white; transform: translate(-25%, -25%); display: flex; justify-content: center; align-items: center; font-weight: 900; font-size: 1rem">${cluster.getChildCount()}</div>`,
-      className: "marker-cluster",
-      iconSize: L.point(33, 33, true),
-    });
-  };
+  const { clusters, supercluster } = useSupercluster({
+    points,
+    bounds,
+    zoom,
+    options: { radius: 75, maxZoom: 20 },
+  });
 
   return (
     <>
-      {!isLoading && (
-        <MarkerClusterGroup chunkedLoading iconCreateFunction={clusterIcon}>
-          {vendors.map((vendor, index) => (
-            <Marker key={index} position={vendor.location} icon={vendorIcon}>
-              <Popup>
-                <VendorPopup>
-                  <Typography variant="h5" textAlign="center">
-                    {vendor.name}
-                  </Typography>
-                  <img
-                    src={vendor.image}
-                    alt="coverImage"
-                    className="vendor-cover-image"
-                  />
-                  <Box>
-                    <MapDealInfoModal deals={vendor.deals} />
-                    <GetDirectionsButton
-                      disabled={isDisabledRoutingButton}
-                      fullWidth
-                      variant="contained"
-                      onClick={() => onVendorLocation(vendor.location)}
-                    >
-                      Добиј насоки
-                      <ArrowRightAltIcon sx={{ marginLeft: 0.5 }} />
-                    </GetDirectionsButton>
-                  </Box>
-                </VendorPopup>
-              </Popup>
-            </Marker>
-          ))}
-        </MarkerClusterGroup>
-      )}
+      {!isLoading &&
+        clusters.map((cluster) => {
+          const [longitude, latitude] = cluster.geometry.coordinates;
+          const { cluster: isCluster, point_count: pointCount } =
+            cluster.properties;
+
+          if (isCluster) {
+            return (
+              <Marker
+                key={`cluster-${cluster.id}`}
+                longitude={longitude}
+                latitude={latitude}
+              >
+                <ClusterMarker
+                  onClick={() => {
+                    const expansionZoom = Math.min(
+                      supercluster.getClusterExpansionZoom(cluster.id),
+                      20,
+                    );
+                    map?.flyTo({
+                      center: [longitude, latitude],
+                      zoom: expansionZoom,
+                      duration: 500,
+                    });
+                  }}
+                  style={{
+                    transform: `translateY(${verticalOffset}px)`,
+                  }}
+                  pointCount={pointCount}
+                >
+                  {pointCount}
+                </ClusterMarker>
+              </Marker>
+            );
+          }
+
+          const vendor = cluster.properties.vendor;
+          return (
+            <React.Fragment key={`vendor-${cluster.properties.vendorId}`}>
+              <Marker
+                longitude={longitude}
+                latitude={latitude}
+                anchor="bottom"
+                onClick={() => setSelectedVendor(vendor)}
+              >
+                <VendorMarkerImage
+                  src={vendorlocationMarker}
+                  alt="vendor marker"
+                  verticalOffset={verticalOffset}
+                />
+              </Marker>
+
+              {selectedVendor === vendor && (
+                <Popup
+                  longitude={longitude}
+                  latitude={latitude}
+                  anchor="bottom"
+                  onClose={() => setSelectedVendor(null)}
+                  closeOnClick={false}
+                  offset={[0, -95 + verticalOffset * 1.5]}
+                  maxWidth="250px"
+                >
+                  <VendorPopup>
+                    <Typography variant="h5" textAlign="center">
+                      {vendor.name}
+                    </Typography>
+                    <img
+                      src={vendor.image}
+                      alt="coverImage"
+                      className="vendor-cover-image"
+                    />
+                    <Box>
+                      <MapDealInfoModal deals={vendor.deals} />
+                      <GetDirectionsButton
+                        disabled={isDisabledRoutingButton}
+                        fullWidth
+                        variant="contained"
+                        onClick={() => onVendorLocation([longitude, latitude])}
+                      >
+                        Добиј насоки
+                        <ArrowRightAltIcon sx={{ marginLeft: 0.5 }} />
+                      </GetDirectionsButton>
+                    </Box>
+                  </VendorPopup>
+                </Popup>
+              )}
+            </React.Fragment>
+          );
+        })}
     </>
   );
 };
+
+const ClusterMarker = styled("div")(({ pointCount }) => ({
+  height: "2rem",
+  width: "2rem",
+  borderRadius: "50%",
+  backgroundColor: "crimson",
+  color: "white",
+  display: "flex",
+  justifyContent: "center",
+  alignItems: "center",
+  fontWeight: 900,
+  fontSize: "1rem",
+  cursor: "pointer",
+  border: "2px solid white",
+  boxShadow: "0 0 10px rgba(0,0,0,0.3)",
+
+  transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+  animation: "clusterPop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1)",
+
+  "&:hover": {
+    transform: "scale(1.15)",
+    boxShadow:
+      "0 0 20px rgba(220, 20, 60, 0.8), 0 0 30px rgba(220, 20, 60, 0.4)",
+  },
+
+  "&:active": {
+    transform: "scale(0.95)",
+  },
+
+  ...(pointCount > 10 && {
+    height: "2.5rem",
+    width: "2.5rem",
+    fontSize: "1.1rem",
+  }),
+  ...(pointCount > 50 && {
+    height: "3rem",
+    width: "3rem",
+    fontSize: "1.2rem",
+  }),
+
+  "@keyframes clusterPop": {
+    "0%": {
+      opacity: 0,
+      transform: "scale(0)",
+    },
+    "50%": {
+      transform: "scale(1.1)",
+    },
+    "100%": {
+      opacity: 1,
+      transform: "scale(1)",
+    },
+  },
+}));
+
+const VendorMarkerImage = styled("img")(({ verticalOffset }) => ({
+  width: 38,
+  height: 95,
+  display: "block",
+  cursor: "pointer",
+  transform: `translateY(${verticalOffset}px)`,
+
+  transition: "all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
+  animation: "markerDrop 0.5s cubic-bezier(0.34, 1.56, 0.64, 1)",
+
+  "&:hover": {
+    transform: `translateY(${verticalOffset}px) scale(1.1)`,
+    filter:
+      "drop-shadow(0 0 8px rgba(220, 20, 60, 0.8)) drop-shadow(0 0 12px rgba(220, 20, 60, 0.4))",
+  },
+
+  "&:active": {
+    transform: `translateY(${verticalOffset}px) scale(0.95)`,
+  },
+
+  "@keyframes markerDrop": {
+    "0%": {
+      opacity: 0,
+      transform: `translateY(${verticalOffset - 50}px) scale(0.3)`,
+    },
+    "50%": {
+      transform: `translateY(${verticalOffset + 5}px) scale(1.05)`,
+    },
+    "100%": {
+      opacity: 1,
+      transform: `translateY(${verticalOffset}px) scale(1)`,
+    },
+  },
+}));
 
 const VendorPopup = styled(Box)(({ theme }) => ({
   display: "flex",

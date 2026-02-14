@@ -1,5 +1,6 @@
 import React from "react";
 import { Box, LinearProgress, Typography, styled } from "@mui/material";
+import { RELEASE_VERSION } from "../api/consts";
 
 const GlobalLoadingProgress = () => {
   return (
@@ -8,7 +9,7 @@ const GlobalLoadingProgress = () => {
       <Box width="15%" margin="10px">
         <LinearProgress color="inherit" />
       </Box>
-      <Typography variant="body1">Release: β 2024.09</Typography>
+      <Typography variant="body1">{RELEASE_VERSION}</Typography>
     </GlobalLoadingOverlay>
   );
 };

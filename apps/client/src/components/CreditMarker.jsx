@@ -1,34 +1,14 @@
-import React, { useState, useMemo, useEffect } from "react";
+import React, { useState, useMemo } from "react";
 import { Marker, Popup } from "react-map-gl/maplibre";
-import { useMap } from "react-map-gl/maplibre";
 import { Typography, Box, styled } from "@mui/material";
 import creditLocationMarker from "../assets/icons/credit_location_marker.svg";
 import creditPopupIcon from "../assets/icons/credit_popup.svg";
+import useMapPitch from "../hooks/useMapPitch";
 
 const CreditMarker = () => {
   const [showPopup, setShowPopup] = useState(false);
-  const [pitch, setPitch] = useState(0);
-  const { current: map } = useMap();
+  const pitch = useMapPitch();
   const position = { lng: 21.409471852749466, lat: 42.00430265307896 };
-
-  useEffect(() => {
-    if (!map) return;
-
-    const updatePitch = () => {
-      const currentPitch = map.getPitch();
-      setPitch((prev) => {
-        const rounded = Math.round(currentPitch / 5) * 5;
-        return prev === rounded ? prev : rounded;
-      });
-    };
-
-    updatePitch();
-    map.on("pitchend", updatePitch);
-
-    return () => {
-      map.off("pitchend", updatePitch);
-    };
-  }, [map]);
 
   const verticalOffset = useMemo(() => pitch * 0.9, [pitch]);
   const popupOffset = useMemo(

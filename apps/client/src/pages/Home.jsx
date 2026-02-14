@@ -26,20 +26,16 @@ const INITIAL_VIEW_STATE = {
 
 const Home = () => {
   const [userLocation, setUserLocation] = useState(null);
-  const [vendorLocation, setVendorLocation] = useState(null);
+  const [routeStart, setRouteStart] = useState(null);
+  const [routeEnd, setRouteEnd] = useState(null);
   const [routingMode, setRoutingMode] = useState("walking");
   const [isLoading, setIsLoading] = useState(false);
   const [isDisabledRoutingButton, setIsDisabledRoutingButton] = useState(false);
-
-  // Store route start/end as primitives to avoid reference instability
-  const [routeStart, setRouteStart] = useState(null);
-  const [routeEnd, setRouteEnd] = useState(null);
 
   const mapRef = useRef(null);
   const { auth } = useAuth();
   const navigate = useNavigate();
 
-  // Stable callbacks with useCallback
   const handleUserLocation = useCallback((location) => {
     setUserLocation(location);
   }, []);
@@ -47,10 +43,8 @@ const Home = () => {
   const handleVendorLocation = useCallback(
     (location) => {
       if (!userLocation) return;
-      // Store as primitives — this is key to breaking the loop
       setRouteStart([userLocation[0], userLocation[1]]);
       setRouteEnd([location[0], location[1]]);
-      setVendorLocation(location);
       setIsDisabledRoutingButton(true);
     },
     [userLocation],
@@ -59,7 +53,6 @@ const Home = () => {
   const handleCancelRoute = useCallback(() => {
     setRouteStart(null);
     setRouteEnd(null);
-    setVendorLocation(null);
     setRoutingMode("walking");
     setIsDisabledRoutingButton(false);
   }, []);
@@ -70,6 +63,10 @@ const Home = () => {
 
   const disableRouting = useCallback(() => {
     setIsDisabledRoutingButton(true);
+  }, []);
+
+  const enableRouting = useCallback(() => {
+    setIsDisabledRoutingButton(false);
   }, []);
 
   const handleSetIsLoading = useCallback((val) => {
@@ -131,10 +128,11 @@ const Home = () => {
         maxZoom={18}
       >
         <LocateUser
-          mapRef={mapRef}
           onUserLocation={handleUserLocation}
           setIsLoading={handleSetIsLoading}
           disableRouting={disableRouting}
+          enableRouting={enableRouting}
+          followUser={!hasRoute}
         />
         <CreditMarker />
         <VendorMarkers
@@ -191,7 +189,6 @@ const Home = () => {
   );
 };
 
-// ... styled components remain identical ...
 const ModeSelectorContainer = styled(Stack)(({ theme }) => ({
   position: "absolute",
   top: "10px",

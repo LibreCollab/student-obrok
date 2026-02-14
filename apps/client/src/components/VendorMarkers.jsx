@@ -7,6 +7,7 @@ import MapDealInfoModal from "./MapDealInfoModal";
 import vendorlocationMarker from "../assets/icons/vendor_location_marker.svg";
 import useSupercluster from "use-supercluster";
 import { useMap } from "react-map-gl/maplibre";
+import useMapPitch from "../hooks/useMapPitch";
 
 const VendorMarkers = ({ onVendorLocation, isDisabledRoutingButton }) => {
   const [vendors, setVendors] = useState([]);
@@ -15,7 +16,7 @@ const VendorMarkers = ({ onVendorLocation, isDisabledRoutingButton }) => {
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [bounds, setBounds] = useState(null);
   const [zoom, setZoom] = useState(16);
-  const [pitch, setPitch] = useState(0);
+  const pitch = useMapPitch();
   const { current: map } = useMap();
   const updateTimeoutRef = useRef(null);
 
@@ -27,14 +28,6 @@ const VendorMarkers = ({ onVendorLocation, isDisabledRoutingButton }) => {
       setZoom(map.getZoom());
     };
 
-    const updatePitch = () => {
-      const currentPitch = map.getPitch();
-      setPitch((prev) => {
-        const rounded = Math.round(currentPitch / 5) * 5;
-        return prev === rounded ? prev : rounded;
-      });
-    };
-
     const throttledBoundsUpdate = () => {
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
@@ -43,15 +36,13 @@ const VendorMarkers = ({ onVendorLocation, isDisabledRoutingButton }) => {
     };
 
     updateBoundsAndZoom();
-    updatePitch();
 
     map.on("moveend", throttledBoundsUpdate);
     map.on("zoomend", updateBoundsAndZoom);
-    map.on("pitchend", updatePitch);
+
     return () => {
       map.off("moveend", throttledBoundsUpdate);
       map.off("zoomend", updateBoundsAndZoom);
-      map.off("pitchend", updatePitch);
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
       }

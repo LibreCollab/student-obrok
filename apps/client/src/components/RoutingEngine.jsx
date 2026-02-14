@@ -1,16 +1,17 @@
-import { useEffect, useState, useMemo } from "react";
+import { useEffect, useState, useMemo, useRef } from "react";
 import { Source, Layer, useMap } from "react-map-gl/maplibre";
 import { OSRM_URL } from "../api/consts";
 
-const RoutingEngine = ({ start, end, mode }) => {
+const RoutingEngine = ({ startLng, startLat, endLng, endLat, mode }) => {
   const [routeData, setRouteData] = useState(null);
   const { current: map } = useMap();
+  const lastFitRef = useRef(null);
 
   const lineStyle = useMemo(() => {
     switch (mode) {
       case "walking":
         return {
-          color: "#DC143C", // Crimson
+          color: "#DC143C",
           width: 5,
           opacity: 0.9,
           dasharray: [2, 2],
@@ -18,7 +19,7 @@ const RoutingEngine = ({ start, end, mode }) => {
         };
       case "cycling":
         return {
-          color: "#FF0080", // Neon Magenta
+          color: "#FF0080",
           width: 5,
           opacity: 0.9,
           dasharray: [0.5, 2],
@@ -26,7 +27,7 @@ const RoutingEngine = ({ start, end, mode }) => {
         };
       case "car":
         return {
-          color: "#FF073A", // Neon Red (like crimson but brighter)
+          color: "#FF073A",
           width: 5,
           opacity: 0.9,
           dasharray: null,
@@ -44,9 +45,15 @@ const RoutingEngine = ({ start, end, mode }) => {
   }, [mode]);
 
   useEffect(() => {
-    if (!start || !end) return;
+    if (
+      startLng == null ||
+      startLat == null ||
+      endLng == null ||
+      endLat == null
+    )
+      return;
 
-    setRouteData(null);
+    const controller = new AbortController();
 
     const profileMap = {
       walking: "foot",
@@ -55,13 +62,13 @@ const RoutingEngine = ({ start, end, mode }) => {
     };
 
     const profile = profileMap[mode] || "foot";
-    const url = `${OSRM_URL}/${profile}/${start[0]},${start[1]};${end[0]},${end[1]}?overview=full&geometries=geojson`;
+    const url = `${OSRM_URL}/${profile}/${startLng},${startLat};${endLng},${endLat}?overview=full&geometries=geojson`;
 
-    fetch(url)
+    setRouteData(null);
+
+    fetch(url, { signal: controller.signal })
       .then((res) => {
-        if (!res.ok) {
-          throw new Error(`HTTP error! status: ${res.status}`);
-        }
+        if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
         return res.json();
       })
       .then((data) => {
@@ -74,24 +81,27 @@ const RoutingEngine = ({ start, end, mode }) => {
 
           setRouteData(newRouteData);
 
-          if (map && route.geometry && route.geometry.coordinates) {
+          const fitKey = `${endLng},${endLat},${mode}`;
+          if (map && lastFitRef.current !== fitKey) {
+            lastFitRef.current = fitKey;
+
             try {
               const coords = route.geometry.coordinates;
               const lngs = coords.map((c) => c[0]);
               const lats = coords.map((c) => c[1]);
 
-              const minLng = Math.min(...lngs);
-              const maxLng = Math.max(...lngs);
-              const minLat = Math.min(...lats);
-              const maxLat = Math.max(...lats);
-
               map.fitBounds(
                 [
-                  [minLng, minLat],
-                  [maxLng, maxLat],
+                  [Math.min(...lngs), Math.min(...lats)],
+                  [Math.max(...lngs), Math.max(...lats)],
                 ],
                 {
-                  padding: { top: 100, bottom: 100, left: 100, right: 100 },
+                  padding: {
+                    top: 100,
+                    bottom: 100,
+                    left: 100,
+                    right: 100,
+                  },
                   duration: 1000,
                   maxZoom: 16,
                 },
@@ -101,15 +111,19 @@ const RoutingEngine = ({ start, end, mode }) => {
             }
           }
         } else {
-          console.error("❌ No routes found in response:", data);
+          console.error("No routes found in response:", data);
           setRouteData(null);
         }
       })
       .catch((err) => {
-        console.error("❌ Routing error:", err);
-        setRouteData(null);
+        if (err.name !== "AbortError") {
+          console.error("Routing error:", err);
+          setRouteData(null);
+        }
       });
-  }, [start, end, mode, map]);
+
+    return () => controller.abort();
+  }, [startLng, startLat, endLng, endLat, mode]);
 
   if (!routeData) return null;
 

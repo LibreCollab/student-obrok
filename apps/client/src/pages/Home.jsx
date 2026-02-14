@@ -1,4 +1,4 @@
-import React, { useState, useRef, useMemo } from "react";
+import React, { useState, useRef, useCallback } from "react";
 import Map from "react-map-gl/maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import { Box, Button, styled, Stack } from "@mui/material";
@@ -16,56 +16,67 @@ import RoutingEngine from "../components/RoutingEngine";
 import useAuth from "../hooks/useAuth";
 import "../assets/map.css";
 
-const Home = () => {
-  const [viewState, setViewState] = useState({
-    longitude: 21.409471852749466,
-    latitude: 42.00430265307896,
-    zoom: 16,
-    pitch: 0,
-    bearing: 0,
-  });
+const INITIAL_VIEW_STATE = {
+  longitude: 21.409471852749466,
+  latitude: 42.00430265307896,
+  zoom: 16,
+  pitch: 0,
+  bearing: 0,
+};
 
+const Home = () => {
   const [userLocation, setUserLocation] = useState(null);
   const [vendorLocation, setVendorLocation] = useState(null);
-  const [route, setRoute] = useState(null);
   const [routingMode, setRoutingMode] = useState("walking");
   const [isLoading, setIsLoading] = useState(false);
   const [isDisabledRoutingButton, setIsDisabledRoutingButton] = useState(false);
+
+  // Store route start/end as primitives to avoid reference instability
+  const [routeStart, setRouteStart] = useState(null);
+  const [routeEnd, setRouteEnd] = useState(null);
 
   const mapRef = useRef(null);
   const { auth } = useAuth();
   const navigate = useNavigate();
 
-  const stablePitch = useMemo(() => {
-    return Math.round(viewState.pitch / 5) * 5;
-  }, [viewState.pitch]);
-
-  const handleUserLocation = (location) => {
+  // Stable callbacks with useCallback
+  const handleUserLocation = useCallback((location) => {
     setUserLocation(location);
-  };
+  }, []);
 
-  const handleVendorLocation = (location) => {
-    setRoute({ start: userLocation, end: location });
-    setVendorLocation(location);
-    setIsDisabledRoutingButton(true);
-  };
+  const handleVendorLocation = useCallback(
+    (location) => {
+      if (!userLocation) return;
+      // Store as primitives — this is key to breaking the loop
+      setRouteStart([userLocation[0], userLocation[1]]);
+      setRouteEnd([location[0], location[1]]);
+      setVendorLocation(location);
+      setIsDisabledRoutingButton(true);
+    },
+    [userLocation],
+  );
 
-  const handleCancelRoute = () => {
-    setRoute(null);
+  const handleCancelRoute = useCallback(() => {
+    setRouteStart(null);
+    setRouteEnd(null);
     setVendorLocation(null);
     setRoutingMode("walking");
     setIsDisabledRoutingButton(false);
-  };
+  }, []);
 
-  const handleDashboardClick = () => {
+  const handleDashboardClick = useCallback(() => {
     navigate("/dashboard");
-  };
+  }, [navigate]);
 
-  const disableRouting = () => {
+  const disableRouting = useCallback(() => {
     setIsDisabledRoutingButton(true);
-  };
+  }, []);
 
-  const onMapLoad = () => {
+  const handleSetIsLoading = useCallback((val) => {
+    setIsLoading(val);
+  }, []);
+
+  const onMapLoad = useCallback(() => {
     const map = mapRef.current?.getMap();
     if (!map) return;
 
@@ -103,16 +114,16 @@ const Home = () => {
     }
 
     map.setPitch(45);
-    setViewState((prev) => ({ ...prev, pitch: 45 }));
-  };
+  }, []);
+
+  const hasRoute = routeStart !== null && routeEnd !== null;
 
   return (
     <Box sx={{ width: "100%", height: "100vh", position: "relative" }}>
       {isLoading && <GlobalLoadingProgress />}
       <Map
         ref={mapRef}
-        {...viewState}
-        onMove={(evt) => setViewState(evt.viewState)}
+        initialViewState={INITIAL_VIEW_STATE}
         style={{ width: "100%", height: "100%" }}
         mapStyle="https://tiles.openfreemap.org/styles/liberty"
         onLoad={onMapLoad}
@@ -122,24 +133,25 @@ const Home = () => {
         <LocateUser
           mapRef={mapRef}
           onUserLocation={handleUserLocation}
-          setIsLoading={setIsLoading}
+          setIsLoading={handleSetIsLoading}
           disableRouting={disableRouting}
         />
-        <CreditMarker pitch={stablePitch} />
+        <CreditMarker />
         <VendorMarkers
           onVendorLocation={handleVendorLocation}
           isDisabledRoutingButton={isDisabledRoutingButton}
-          pitch={stablePitch}
         />
-        {route && (
+        {hasRoute && (
           <RoutingEngine
-            start={route.start}
-            end={route.end}
+            startLng={routeStart[0]}
+            startLat={routeStart[1]}
+            endLng={routeEnd[0]}
+            endLat={routeEnd[1]}
             mode={routingMode}
           />
         )}
       </Map>
-      {route && (
+      {hasRoute && (
         <>
           <ModeSelectorContainer direction="row" spacing={1}>
             <ModeButton
@@ -179,6 +191,7 @@ const Home = () => {
   );
 };
 
+// ... styled components remain identical ...
 const ModeSelectorContainer = styled(Stack)(({ theme }) => ({
   position: "absolute",
   top: "10px",

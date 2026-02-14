@@ -8,43 +8,50 @@ import vendorlocationMarker from "../assets/icons/vendor_location_marker.svg";
 import useSupercluster from "use-supercluster";
 import { useMap } from "react-map-gl/maplibre";
 
-const VendorMarkers = ({
-  onVendorLocation,
-  isDisabledRoutingButton,
-  pitch,
-}) => {
+const VendorMarkers = ({ onVendorLocation, isDisabledRoutingButton }) => {
   const [vendors, setVendors] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [_, setError] = useState("");
   const [selectedVendor, setSelectedVendor] = useState(null);
   const [bounds, setBounds] = useState(null);
   const [zoom, setZoom] = useState(16);
+  const [pitch, setPitch] = useState(0);
   const { current: map } = useMap();
   const updateTimeoutRef = useRef(null);
 
   useEffect(() => {
     if (!map) return;
 
-    const updateMapState = () => {
+    const updateBoundsAndZoom = () => {
       setBounds(map.getBounds().toArray().flat());
       setZoom(map.getZoom());
     };
 
-    const throttledUpdate = () => {
+    const updatePitch = () => {
+      const currentPitch = map.getPitch();
+      setPitch((prev) => {
+        const rounded = Math.round(currentPitch / 5) * 5;
+        return prev === rounded ? prev : rounded;
+      });
+    };
+
+    const throttledBoundsUpdate = () => {
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
       }
-      updateTimeoutRef.current = setTimeout(updateMapState, 50);
+      updateTimeoutRef.current = setTimeout(updateBoundsAndZoom, 150);
     };
 
-    updateMapState();
+    updateBoundsAndZoom();
+    updatePitch();
 
-    map.on("move", throttledUpdate);
-    map.on("zoom", updateMapState);
-
+    map.on("moveend", throttledBoundsUpdate);
+    map.on("zoomend", updateBoundsAndZoom);
+    map.on("pitchend", updatePitch);
     return () => {
-      map.off("move", throttledUpdate);
-      map.off("zoom", updateMapState);
+      map.off("moveend", throttledBoundsUpdate);
+      map.off("zoomend", updateBoundsAndZoom);
+      map.off("pitchend", updatePitch);
       if (updateTimeoutRef.current) {
         clearTimeout(updateTimeoutRef.current);
       }
@@ -65,11 +72,15 @@ const VendorMarkers = ({
           headers: { "Content-Type": "application/json" },
           withCredentials: true,
         });
-        isMounted && setVendors(response.data);
-        setIsLoading(false);
+        if (isMounted) {
+          setVendors(response.data);
+          setIsLoading(false);
+        }
       } catch (error) {
-        setError(error.response?.data?.message || "Error loading vendors");
-        setIsLoading(false);
+        if (isMounted) {
+          setError(error.response?.data?.message || "Error loading vendors");
+          setIsLoading(false);
+        }
       }
     };
 
@@ -159,7 +170,7 @@ const VendorMarkers = ({
                 <VendorMarkerImage
                   src={vendorlocationMarker}
                   alt="vendor marker"
-                  verticalOffset={verticalOffset}
+                  $verticalOffset={verticalOffset}
                 />
               </Marker>
 
@@ -218,20 +229,16 @@ const ClusterMarker = styled("div")(({ pointCount }) => ({
   cursor: "pointer",
   border: "2px solid white",
   boxShadow: "0 0 10px rgba(0,0,0,0.3)",
-
   transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
   animation: "clusterPop 0.3s cubic-bezier(0.34, 1.56, 0.64, 1)",
-
   "&:hover": {
     transform: "scale(1.15)",
     boxShadow:
       "0 0 20px rgba(220, 20, 60, 0.8), 0 0 30px rgba(220, 20, 60, 0.4)",
   },
-
   "&:active": {
     transform: "scale(0.95)",
   },
-
   ...(pointCount > 10 && {
     height: "2.5rem",
     width: "2.5rem",
@@ -242,53 +249,40 @@ const ClusterMarker = styled("div")(({ pointCount }) => ({
     width: "3rem",
     fontSize: "1.2rem",
   }),
-
   "@keyframes clusterPop": {
-    "0%": {
-      opacity: 0,
-      transform: "scale(0)",
-    },
-    "50%": {
-      transform: "scale(1.1)",
-    },
-    "100%": {
-      opacity: 1,
-      transform: "scale(1)",
-    },
+    "0%": { opacity: 0, transform: "scale(0)" },
+    "50%": { transform: "scale(1.1)" },
+    "100%": { opacity: 1, transform: "scale(1)" },
   },
 }));
 
-const VendorMarkerImage = styled("img")(({ verticalOffset }) => ({
+const VendorMarkerImage = styled("img")(({ $verticalOffset = 0 }) => ({
   width: 38,
   height: 95,
   display: "block",
   cursor: "pointer",
-  transform: `translateY(${verticalOffset}px)`,
-
+  transform: `translateY(${$verticalOffset}px)`,
   transition: "all 0.2s cubic-bezier(0.34, 1.56, 0.64, 1)",
   animation: "markerDrop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1)",
-
   "&:hover": {
-    transform: `translateY(${verticalOffset}px) scale(1.1)`,
+    transform: `translateY(${$verticalOffset}px) scale(1.1)`,
     filter:
       "drop-shadow(0 0 8px rgba(220, 20, 60, 0.8)) drop-shadow(0 0 12px rgba(220, 20, 60, 0.4))",
   },
-
   "&:active": {
-    transform: `translateY(${verticalOffset}px) scale(0.95)`,
+    transform: `translateY(${$verticalOffset}px) scale(0.95)`,
   },
-
   "@keyframes markerDrop": {
     "0%": {
       opacity: 0,
-      transform: `translateY(${verticalOffset - 50}px) scale(0.3)`,
+      transform: `translateY(${$verticalOffset - 50}px) scale(0.3)`,
     },
     "50%": {
-      transform: `translateY(${verticalOffset + 5}px) scale(1.05)`,
+      transform: `translateY(${$verticalOffset + 5}px) scale(1.05)`,
     },
     "100%": {
       opacity: 1,
-      transform: `translateY(${verticalOffset}px) scale(1)`,
+      transform: `translateY(${$verticalOffset}px) scale(1)`,
     },
   },
 }));
@@ -301,7 +295,6 @@ const VendorPopup = styled(Box)(({ theme }) => ({
   width: 200,
   height: 350,
   margin: "10px 0",
-
   "& .vendor-cover-image": {
     width: "90%",
     maxWidth: "180px",
@@ -318,7 +311,6 @@ const GetDirectionsButton = styled(Button)(({ theme }) => ({
   textTransform: "none",
   color: "white",
   marginTop: 15,
-
   "&:hover": {
     backgroundColor: "rgba(0, 0, 0, 0.8)",
   },

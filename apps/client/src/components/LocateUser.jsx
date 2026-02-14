@@ -12,78 +12,106 @@ const LocateUser = ({
   const watchIdRef = useRef(null);
   const deadlineTimerRef = useRef(null);
 
-  const startWatching = (highAccuracy) => {
-    if (watchIdRef.current !== null) {
-      navigator.geolocation.clearWatch(watchIdRef.current);
-    }
+  const onUserLocationRef = useRef(onUserLocation);
+  const setIsLoadingRef = useRef(setIsLoading);
+  const disableRoutingRef = useRef(disableRouting);
+  const mapRefRef = useRef(mapRef);
 
-    const options = {
-      enableHighAccuracy: highAccuracy,
-      timeout: highAccuracy ? 5000 : 10000,
-      maximumAge: 0,
-    };
+  useEffect(() => {
+    onUserLocationRef.current = onUserLocation;
+  }, [onUserLocation]);
+  useEffect(() => {
+    setIsLoadingRef.current = setIsLoading;
+  }, [setIsLoading]);
+  useEffect(() => {
+    disableRoutingRef.current = disableRouting;
+  }, [disableRouting]);
+  useEffect(() => {
+    mapRefRef.current = mapRef;
+  }, [mapRef]);
 
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        const newPos = [longitude, latitude]; // MapLibre uses [lng, lat]
-
-        setPosition(newPos);
-        onUserLocation(newPos);
-
-        if (firstFlyBy.current) {
-          clearTimeout(deadlineTimerRef.current);
-          setIsLoading(false);
-
-          mapRef.current?.flyTo({
-            center: newPos,
-            duration: 1000,
-          });
-
-          firstFlyBy.current = false;
-        }
-      },
-      (error) => {
-        console.warn(
-          `Location error (HighAccuracy: ${highAccuracy}):`,
-          error.message,
-        );
-
-        if (
-          highAccuracy &&
-          (error.code === error.TIMEOUT ||
-            error.code === error.POSITION_UNAVAILABLE)
-        ) {
-          console.log("Switching to low accuracy fallback...");
-          startWatching(false);
-        } else {
-          if (firstFlyBy.current) {
-            clearTimeout(deadlineTimerRef.current);
-            setIsLoading(false);
-            disableRouting();
-          }
-        }
-      },
-      options,
-    );
-  };
+  const lastReportedPos = useRef(null);
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setIsLoading(false);
-      disableRouting();
+      setIsLoadingRef.current(false);
+      disableRoutingRef.current();
       return;
     }
 
-    setIsLoading(true);
+    setIsLoadingRef.current(true);
 
     deadlineTimerRef.current = setTimeout(() => {
       if (firstFlyBy.current) {
         console.log("Deadline reached: Showing map anyway.");
-        setIsLoading(false);
-        disableRouting();
+        setIsLoadingRef.current(false);
+        disableRoutingRef.current();
       }
     }, 8000);
+
+    const startWatching = (highAccuracy) => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+
+      const options = {
+        enableHighAccuracy: highAccuracy,
+        timeout: highAccuracy ? 5000 : 10000,
+        maximumAge: 0,
+      };
+
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (pos) => {
+          const { latitude, longitude } = pos.coords;
+          const newPos = [longitude, latitude];
+
+          setPosition(newPos);
+
+          // Only notify parent if moved > 15m (prevents cascade re-renders)
+          const prev = lastReportedPos.current;
+          if (!prev || haversineDistance(prev, newPos) > 15) {
+            lastReportedPos.current = newPos;
+            onUserLocationRef.current(newPos);
+          }
+
+          if (firstFlyBy.current) {
+            clearTimeout(deadlineTimerRef.current);
+            setIsLoadingRef.current(false);
+            lastReportedPos.current = newPos;
+            onUserLocationRef.current(newPos);
+
+            mapRefRef.current?.current?.flyTo({
+              center: newPos,
+              duration: 1000,
+            });
+
+            firstFlyBy.current = false;
+          }
+        },
+        (error) => {
+          console.warn(
+            `Location error (HighAccuracy: ${highAccuracy}):`,
+            error.message,
+          );
+
+          if (
+            highAccuracy &&
+            (error.code === error.TIMEOUT ||
+              error.code === error.POSITION_UNAVAILABLE)
+          ) {
+            console.log("Switching to low accuracy fallback...");
+            startWatching(false);
+          } else {
+            if (firstFlyBy.current) {
+              clearTimeout(deadlineTimerRef.current);
+              setIsLoadingRef.current(false);
+              disableRoutingRef.current();
+            }
+          }
+        },
+        options,
+      );
+    };
 
     startWatching(true);
 
@@ -109,5 +137,17 @@ const LocateUser = ({
     </Marker>
   );
 };
+
+// Haversine distance in meters (Don't ask me to explain this pls)
+function haversineDistance([lng1, lat1], [lng2, lat2]) {
+  const R = 6371000;
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLng = toRad(lng2 - lng1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLng / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
 
 export default LocateUser;

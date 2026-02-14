@@ -24,3 +24,4 @@ If you want to configure SLL for HTTPS you're gonna need:
 For the client app you're not gonna need a .env file, just create/edit the consts.js file in apps/client/src/api/ and add these values:
 - BASE_URL = "http://localhost:5000/api";
 - OSRM_URL = "http://localhost:5001/route/v1";
+- RELEASE_VERSION = "Release: Example Date";

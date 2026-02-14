@@ -103,8 +103,8 @@ const VendorMarkers = ({
     bounds,
     zoom,
     options: {
-      radius: 60,
-      maxZoom: 20,
+      radius: 50,
+      maxZoom: 15,
       minZoom: 0,
       extent: 512,
       nodeSize: 64,
@@ -125,6 +125,7 @@ const VendorMarkers = ({
                 key={`cluster-${cluster.id}`}
                 longitude={longitude}
                 latitude={latitude}
+                anchor="center"
               >
                 <ClusterMarker
                   onClick={() => {
@@ -137,9 +138,6 @@ const VendorMarkers = ({
                       zoom: expansionZoom,
                       duration: 300,
                     });
-                  }}
-                  style={{
-                    transform: `translateY(${verticalOffset}px)`,
                   }}
                   pointCount={pointCount}
                 >

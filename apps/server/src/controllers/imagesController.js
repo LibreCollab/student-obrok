@@ -1,9 +1,14 @@
 import mongoose from "mongoose";
+import fs from "fs";
+import path from "path";
 import { ImageModel } from "../models/Images.js";
 
 const getAllImages = async (req, res) => {
   try {
-    const images = await ImageModel.find({}, "title mimeType createdAt");
+    const images = await ImageModel.find(
+      {},
+      "title filename url mimeType size createdAt",
+    );
 
     if (!images || images.length === 0) {
       return res.status(204).json({ message: "No images found." });
@@ -42,33 +47,24 @@ const getImage = async (req, res) => {
 };
 
 const uploadImage = async (req, res) => {
-  if (!req?.body?.title) {
-    return res.status(400).json({ message: "Image title is required!" });
-  }
-
-  if (!req?.body?.data) {
-    return res.status(400).json({ message: "Image data is required!" });
-  }
-
-  if (!req?.body?.mimeType) {
-    return res.status(400).json({ message: "MIME type is required!" });
+  if (!req.file) {
+    return res.status(400).json({ message: "Image file is required!" });
   }
 
   try {
     const result = await ImageModel.create({
-      title: req.body.title,
-      data: req.body.data,
-      mimeType: req.body.mimeType,
+      title: req.file.originalname,
+      filename: req.file.filename,
+      url: `/uploads/${req.file.filename}`,
+      mimeType: req.file.mimetype,
+      size: req.file.size,
     });
 
-    res.status(201).json({
-      _id: result._id,
-      title: result.title,
-      mimeType: result.mimeType,
-      createdAt: result.createdAt,
-    });
+    res.status(201).json(result);
   } catch (err) {
     console.error(err);
+    // Clean up the uploaded file if DB save fails
+    fs.unlink(req.file.path, () => {});
     res.status(500).json({ message: "Internal server error." });
   }
 };
@@ -90,6 +86,12 @@ const deleteImage = async (req, res) => {
         .status(404)
         .json({ message: `No image matches ID ${req.body.id}.` });
     }
+
+    // Delete file from disk
+    const filePath = path.resolve("src/uploads", image.filename);
+    fs.unlink(filePath, (err) => {
+      if (err) console.error("Failed to delete file:", err);
+    });
 
     const result = await image.deleteOne();
     res.status(200).json(result);

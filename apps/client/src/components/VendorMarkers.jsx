@@ -180,8 +180,8 @@ const VendorMarkers = ({ onVendorLocation, isDisabledRoutingButton }) => {
                       {vendor.name}
                     </Typography>
                     <img
-                      src={vendor.image}
-                      alt="coverImage"
+                      src={vendor?.image?.data}
+                      alt={vendor?.image?.title || "coverImage"}
                       className="vendor-cover-image"
                     />
                     <Box>

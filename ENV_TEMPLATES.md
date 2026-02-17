@@ -11,10 +11,9 @@ For the root directory .env file you're gonna need:
 - REFRESH_TOKEN_SECRET=123
 - ADMIN_USERNAME=admin
 - ADMIN_PASSWORD="123"
-- DATABASE_URI=mongodb://admin:password@obrok_db:27017
+- DATABASE_URI=mongodb://admin:password@obrok_db:27017/obrok?authSource=admin
 - MONGO_INITDB_ROOT_USERNAME=admin
 - MONGO_INITDB_ROOT_PASSWORD=password
-- MONGO_INITDB_DATABASE=obrok
 - CLIENT_ORIGIN=http://localhost:80
 - PORT=5000
 

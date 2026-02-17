@@ -3,12 +3,12 @@ import { Marker, Popup } from "react-map-gl/maplibre";
 import axios from "../api/axios";
 import { Button, Typography, Box, styled } from "@mui/material";
 import ArrowRightAltIcon from "@mui/icons-material/ArrowRightAlt";
-import MapDealInfoModal from "./MapDealInfoModal";
 import vendorlocationMarker from "../assets/icons/vendor_location_marker.svg";
 import useSupercluster from "use-supercluster";
 import { useMap } from "react-map-gl/maplibre";
 import useMapPitch from "../hooks/useMapPitch";
 import { BASE_URL } from "../api/consts";
+import MapProductInfoModal from "./MapProductInfoModal";
 
 const VendorMarkers = ({ onVendorLocation, isDisabledRoutingButton }) => {
   const [vendors, setVendors] = useState([]);
@@ -186,7 +186,7 @@ const VendorMarkers = ({ onVendorLocation, isDisabledRoutingButton }) => {
                       className="vendor-cover-image"
                     />
                     <Box>
-                      <MapDealInfoModal deals={vendor.deals} />
+                      <MapProductInfoModal products={vendor.products} />
                       <GetDirectionsButton
                         disabled={isDisabledRoutingButton}
                         fullWidth

@@ -4,11 +4,11 @@ import NotFound from "../pages/NotFound";
 import Login from "../pages/Login";
 import Dashboard from "../pages/Dashboard";
 import RequireAuth from "./RequireAuth";
-import AddOrEditDealForm from "../pages/AddOrEditDealForm";
+import AddOrEditProductForm from "../pages/AddOrEditProductForm";
 import Layout from "./Layout";
 import PersistLogin from "./PersistLogin";
 import AddOrEditVendorForm from "../pages/AddOrEditVendorForm";
-import VendorDeals from "../pages/VendorDeals";
+import VendorProducts from "../pages/VendorProducts";
 import Home from "../pages/Home";
 
 const App = () => {
@@ -21,14 +21,17 @@ const App = () => {
           <Route element={<RequireAuth />}>
             <Route path="/dashboard" element={<Dashboard />} />
             <Route
-              path="/dashboard/deal/:dealId"
-              element={<AddOrEditDealForm />}
+              path="/dashboard/product/:productId"
+              element={<AddOrEditProductForm />}
             />
             <Route
-              path="/dashboard/deals/:vendorId"
-              element={<VendorDeals />}
+              path="/dashboard/products/:vendorId"
+              element={<VendorProducts />}
             />
-            <Route path="/dashboard/deal" element={<AddOrEditDealForm />} />
+            <Route
+              path="/dashboard/product"
+              element={<AddOrEditProductForm />}
+            />
             <Route
               path="/dashboard/vendor/:vendorId"
               element={<AddOrEditVendorForm />}

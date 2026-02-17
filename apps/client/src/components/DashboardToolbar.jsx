@@ -16,8 +16,8 @@ const DashboardToolbar = ({ theme, handleSearchChange }) => {
   const [errorBag, setErrorBag] = useState("");
   const [generating, setIsGenerating] = useState(false);
 
-  const handleAddDeal = () => {
-    navigate("/dashboard/deal");
+  const handleAddProduct = () => {
+    navigate("/dashboard/product");
   };
 
   const handleRegisterVendor = () => {
@@ -29,22 +29,21 @@ const DashboardToolbar = ({ theme, handleSearchChange }) => {
 
     try {
       const response = await axiosPrivate.get("/vendors/report", {
-        responseType: "blob", // Important: Tell Axios to expect a binary response
+        responseType: "blob",
       });
 
-      // Create a URL for the blob data
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement("a");
       link.href = url;
-      link.setAttribute("download", "VendorsReport.csv"); // Set the filename
+      link.setAttribute("download", "VendorsReport.csv");
       document.body.appendChild(link);
-      link.click(); // Trigger the download
-      document.body.removeChild(link); // Clean up
+      link.click();
+      document.body.removeChild(link);
 
       setIsGenerating(false);
     } catch (error) {
       setIsGenerating(false);
-      setErrorBag(error.response.data.message);
+      setErrorBag(error.response?.data?.message);
     }
   };
 
@@ -65,16 +64,19 @@ const DashboardToolbar = ({ theme, handleSearchChange }) => {
             <StoreIcon />
           )}
         </RegisterVendorButton>
-        <AddDealButton variant="contained" onClick={() => handleAddDeal()}>
+        <AddProductButton
+          variant="contained"
+          onClick={() => handleAddProduct()}
+        >
           {!isSmallScreen ? (
             <>
               <AddIcon sx={{ marginRight: 0.5 }} />
-              Add Deal
+              Add Product
             </>
           ) : (
             <LocalOfferIcon />
           )}
-        </AddDealButton>
+        </AddProductButton>
         <GenerateReportButton
           variant="contained"
           onClick={() => handleGenerateReport()}
@@ -118,33 +120,24 @@ const ToolbarBox = styled(Box)(({ theme }) => ({
   marginTop: 20,
 }));
 
-const RegisterVendorButton = styled(Button)(({ theme }) => ({
+const RegisterVendorButton = styled(Button)(() => ({
   textTransform: "none",
   backgroundColor: "black",
   marginRight: 10,
-
-  "&:hover": {
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-  },
+  "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.8)" },
 }));
 
-const AddDealButton = styled(Button)(({ theme }) => ({
+const AddProductButton = styled(Button)(() => ({
   textTransform: "none",
   backgroundColor: "black",
   marginRight: 10,
-
-  "&:hover": {
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-  },
+  "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.8)" },
 }));
 
-const GenerateReportButton = styled(Button)(({ theme }) => ({
+const GenerateReportButton = styled(Button)(() => ({
   textTransform: "none",
   backgroundColor: "black",
-
-  "&:hover": {
-    backgroundColor: "rgba(0, 0, 0, 0.8)",
-  },
+  "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.8)" },
 }));
 
 export default DashboardToolbar;

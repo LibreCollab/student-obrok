@@ -27,7 +27,13 @@ import DashboardImageModal from "./DashboardImageModal";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
 import { BASE_URL } from "../api/consts";
 
-const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
+const VendorsList = ({
+  theme,
+  searchTerm,
+  setProducts,
+  vendors,
+  setVendors,
+}) => {
   const navigate = useNavigate();
   const location = useLocation();
   const axiosPrivate = useAxiosPrivate();
@@ -38,12 +44,10 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
 
   const handleRemoveVendor = async (vendorId) => {
     let confirmed = window.confirm(
-      "Are you sure you want to remove this vendor?\nThis WILL REMOVE all of the deals that are by this vendor.",
+      "Are you sure you want to remove this vendor?\nThis WILL REMOVE all of the products that are by this vendor.",
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     setIsLoading(true);
 
@@ -59,16 +63,16 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
         withCredentials: true,
       });
 
-      const dealsResponse = await axios.get("/deals", {
+      const productsResponse = await axios.get("/products", {
         headers: { "Content-Type": "application/json" },
         withCredentials: true,
       });
 
-      setDeals(dealsResponse.data);
+      setProducts(productsResponse.data);
       setVendors(vendorsResponse.data);
       setIsLoading(false);
     } catch (error) {
-      setError(error.response.data.message);
+      setError(error.response?.data?.message);
       navigate("/login", { state: { from: location }, replace: true });
     }
   };
@@ -92,13 +96,13 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
         );
         if (isMounted) {
           setVendors(response.data);
-
+          // Small delay for smooth UI transition
           setTimeout(() => {
             setIsLoading(false);
           }, 100);
         }
       } catch (error) {
-        setError(error.response.data.message);
+        setError(error.response?.data?.message);
         navigate("/login", { state: { from: location }, replace: true });
       }
     };
@@ -120,18 +124,18 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
     navigate(`/dashboard/vendor/${vendorId}`);
   };
 
-  const handleNavigateToDeals = (vendorId) => {
-    navigate(`/dashboard/deals/${vendorId}`);
+  const handleNavigateToProducts = (vendorId) => {
+    navigate(`/dashboard/products/${vendorId}`);
   };
 
-  const searchTermInVendor = (deal, term) => {
-    return Object.values(deal).some((value) =>
+  const searchTermInVendor = (vendor, term) => {
+    return Object.values(vendor).some((value) =>
       value?.toString().toLowerCase().includes(term.toLowerCase()),
     );
   };
 
-  const filteredVendors = vendors.filter((deal) =>
-    searchTermInVendor(deal, searchTerm),
+  const filteredVendors = vendors.filter((vendor) =>
+    searchTermInVendor(vendor, searchTerm),
   );
 
   return (
@@ -168,8 +172,10 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
                           />
                           <ViewVendorButton
                             variant="contained"
-                            onClick={() => handleNavigateToDeals(vendor._id)}
-                            disabled={!vendor.deals}
+                            onClick={() => handleNavigateToProducts(vendor._id)}
+                            disabled={
+                              !vendor.products || vendor.products.length === 0
+                            }
                             className="vendor-button"
                           >
                             <LocalOfferIcon sx={{ marginRight: 1 }} /> View
@@ -194,7 +200,7 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
                     </Card>
                   </Grid>
                 ))
-            : Array(Math.min(5, filteredVendors.length))
+            : Array(Math.min(5, filteredVendors.length || 5))
                 .fill()
                 .map((_, index) => (
                   <Grid item xs={12} key={index}>
@@ -213,12 +219,8 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
           <VendorsTableContainer>
             <Table
               sx={{
-                "& thead th": {
-                  backgroundColor: "#f2f2f2",
-                },
-                "& tbody tr:nth-of-type(even)": {
-                  backgroundColor: "#f2f2f2",
-                },
+                "& thead th": { backgroundColor: "#f2f2f2" },
+                "& tbody tr:nth-of-type(even)": { backgroundColor: "#f2f2f2" },
               }}
             >
               <TableHead>
@@ -227,7 +229,7 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
                   <TableCell sx={{ color: "gray" }}>Name</TableCell>
                   <TableCell sx={{ color: "gray" }}>Location</TableCell>
                   <TableCell sx={{ color: "gray" }}>Image</TableCell>
-                  <TableCell sx={{ color: "gray" }}>Deals</TableCell>
+                  <TableCell sx={{ color: "gray" }}>Products</TableCell>
                   <TableCell sx={{ color: "gray", textAlign: "right" }}>
                     Actions
                   </TableCell>
@@ -251,10 +253,14 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
                           </TableCell>
                           <TableCell>
                             <Button
-                              disabled={!vendor.deals}
+                              disabled={
+                                !vendor.products || vendor.products.length === 0
+                              }
                               color="inherit"
                               sx={{ textTransform: "none" }}
-                              onClick={() => handleNavigateToDeals(vendor._id)}
+                              onClick={() =>
+                                handleNavigateToProducts(vendor._id)
+                              }
                             >
                               <LocalOfferIcon sx={{ marginRight: 1 }} />
                               View
@@ -278,14 +284,14 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
                       ))}
                   </>
                 ) : (
-                  Array(Math.min(5, filteredVendors.length))
+                  Array(Math.min(5, filteredVendors.length || 5))
                     .fill()
                     .map((_, index) => (
                       <TableRow key={index}>
                         {Array(6)
                           .fill()
-                          .map((_, index) => (
-                            <TableCell key={index}>
+                          .map((_, idx) => (
+                            <TableCell key={idx}>
                               <Skeleton
                                 animation="wave"
                                 height={40}
@@ -313,7 +319,7 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
   );
 };
 
-const VendorsTableContainer = styled(TableContainer)(({ theme }) => ({
+const VendorsTableContainer = styled(TableContainer)(() => ({
   width: "98vw",
   marginLeft: "auto",
   marginRight: "auto",
@@ -321,46 +327,43 @@ const VendorsTableContainer = styled(TableContainer)(({ theme }) => ({
   borderRadius: 10,
 }));
 
-const Error = styled(Typography)(({ theme }) => ({
+const Error = styled(Typography)(() => ({
   color: "crimson",
   width: "100%",
   display: "flex",
   justifyContent: "center",
 }));
 
-const VendorButtonsGrid = styled(Box)(({ theme }) => ({
+const VendorButtonsGrid = styled(Box)(() => ({
   display: "flex",
   justifyContent: "center",
   marginTop: 5,
-
-  // Galaxy Fold
-  [`@media (min-width: 280px) and (max-width: 280px) and 
-    (min-height: 653px) and (max-height: 653px)`]: {
-    flexWrap: "wrap",
-
-    ".vendor-button:nth-of-type(2), .vendor-button:nth-of-type(3)": {
-      marginTop: 10,
+  [`@media (min-width: 280px) and (max-width: 280px) and (min-height: 653px) and (max-height: 653px)`]:
+    {
+      flexWrap: "wrap",
+      ".vendor-button:nth-of-type(2), .vendor-button:nth-of-type(3)": {
+        marginTop: 10,
+      },
     },
-  },
 }));
 
-const EditVendorButton = styled(Button)(({ theme }) => ({
+const EditVendorButton = styled(Button)(() => ({
   backgroundColor: "black",
   marginLeft: "3vw",
   textTransform: "none",
   color: "white",
 }));
 
-const ViewVendorButton = styled(Button)(({ theme }) => ({
+const ViewVendorButton = styled(Button)(() => ({
   backgroundColor: "black",
   marginLeft: "3vw",
   textTransform: "none",
   color: "white",
 }));
 
-const RemoveVendorButton = styled(Button)(({ theme }) => ({
+const RemoveVendorButton = styled(Button)(() => ({
   marginLeft: "3vw",
   textTransform: "none",
 }));
 
-export default VendorstList;
+export default VendorsList;

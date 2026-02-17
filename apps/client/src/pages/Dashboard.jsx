@@ -2,20 +2,20 @@ import { Grid, styled, useMediaQuery } from "@mui/material";
 import React, { useState } from "react";
 import DashboardHeader from "../components/DashboardHeader";
 import { createTheme, ThemeProvider } from "@mui/material";
-import DealsList from "../components/DealsList";
-import VendorstList from "../components/VendorList";
+import ProductsList from "../components/ProductsList";
+import VendorsList from "../components/VendorsList";
 import DashboardToolbar from "../components/DashboardToolbar";
-import DealSearchBar from "../components/DealSearchBar";
+import ProductSearchBar from "../components/ProductSearchBar";
 
 const Dashboard = () => {
   const theme = createTheme();
-  const [dealSearchTerm, setDealSearchTerm] = useState("");
+  const [productSearchTerm, setProductSearchTerm] = useState("");
   const [vendorSearchTerm, setVendorSearchTerm] = useState("");
-  const [deals, setDeals] = useState([]);
+  const [products, setProducts] = useState([]);
   const [vendors, setVendors] = useState([]);
 
-  const handleDealSearchChange = (event) => {
-    setDealSearchTerm(event.target.value);
+  const handleProductSearchChange = (event) => {
+    setProductSearchTerm(event.target.value);
   };
 
   const handleVendorSearchChange = (event) => {
@@ -30,31 +30,32 @@ const Dashboard = () => {
           theme={theme}
           handleSearchChange={handleVendorSearchChange}
         />
-        <VendorstList
+        <VendorsList
           theme={theme}
           searchTerm={vendorSearchTerm}
-          setDeals={setDeals}
+          setProducts={setProducts}
           vendors={vendors}
           setVendors={setVendors}
         />
-        <DealsToolbarGrid>
-          <DealSearchBar
+        <ToolbarGrid>
+          <ProductSearchBar
             theme={theme}
-            handleSearchChange={handleDealSearchChange}
+            handleSearchChange={handleProductSearchChange}
+            placeholder="Search products..."
           />
-        </DealsToolbarGrid>
-        <DealsList
+        </ToolbarGrid>
+        <ProductsList
           theme={theme}
-          searchTerm={dealSearchTerm}
-          deals={deals}
-          setDeals={setDeals}
+          searchTerm={productSearchTerm}
+          products={products}
+          setProducts={setProducts}
         />
       </Grid>
     </ThemeProvider>
   );
 };
 
-const DealsToolbarGrid = styled(Grid)(({ theme }) => ({
+const ToolbarGrid = styled(Grid)(({ theme }) => ({
   display: "flex",
   justifyContent: useMediaQuery(theme.breakpoints.down("sm"))
     ? "center"

@@ -12,8 +12,9 @@ import cookieParser from "cookie-parser";
 import { refreshTokenRouter } from "./routes/api/refresh.js";
 import { logoutRouter } from "./routes/api/logout.js";
 import { vendorsRouter } from "./routes/api/vendors.js";
-const PORT = process.env.PORT || 5000;
+import { imagesRouter } from "./routes/api/images.js";
 
+const PORT = process.env.PORT;
 const app = express();
 
 // Connect to MongoDB
@@ -44,6 +45,7 @@ app.use("/api", refreshTokenRouter);
 app.use("/api", logoutRouter);
 app.use("/api", dealsRouter);
 app.use("/api", vendorsRouter);
+app.use("/api", imagesRouter);
 
 mongoose.connection.once("open", () => {
   console.log("Connected to MongoDB");

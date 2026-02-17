@@ -44,5 +44,5 @@ data/certbot/*
 apps/client/src/api/consts.js
 
 #File uploads
-src/uploads/*
-!src/uploads/.gitkeep
+apps/server/src/uploads/*
+!apps/server/src/uploads/.gitkeep

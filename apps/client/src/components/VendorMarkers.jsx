@@ -8,6 +8,7 @@ import vendorlocationMarker from "../assets/icons/vendor_location_marker.svg";
 import useSupercluster from "use-supercluster";
 import { useMap } from "react-map-gl/maplibre";
 import useMapPitch from "../hooks/useMapPitch";
+import { BASE_URL } from "../api/consts";
 
 const VendorMarkers = ({ onVendorLocation, isDisabledRoutingButton }) => {
   const [vendors, setVendors] = useState([]);
@@ -180,7 +181,7 @@ const VendorMarkers = ({ onVendorLocation, isDisabledRoutingButton }) => {
                       {vendor.name}
                     </Typography>
                     <img
-                      src={vendor?.image?.data}
+                      src={`${BASE_URL}${vendor?.image?.url}`}
                       alt={vendor?.image?.title || "coverImage"}
                       className="vendor-cover-image"
                     />

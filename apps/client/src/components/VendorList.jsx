@@ -25,6 +25,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from "../api/axios";
 import DashboardImageModal from "./DashboardImageModal";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import { BASE_URL } from "../api/consts";
 
 const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
   const navigate = useNavigate();
@@ -161,7 +162,7 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
                         <VendorButtonsGrid>
                           <DashboardImageModal
                             variant={"contained"}
-                            image={vendor?.image?.data}
+                            image={`${BASE_URL}${vendor?.image?.url}`}
                             imageTitle={vendor?.image?.title}
                             className="vendor-button"
                           />
@@ -245,7 +246,7 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
                           <TableCell>
                             <DashboardImageModal
                               imageTitle={vendor?.image?.title}
-                              image={vendor?.image?.data}
+                              image={`${BASE_URL}${vendor?.image?.url}`}
                             />
                           </TableCell>
                           <TableCell>

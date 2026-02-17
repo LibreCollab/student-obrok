@@ -1,5 +1,6 @@
 import "dotenv/config";
 import express from "express";
+import path from "path";
 import cors from "cors";
 import mongoose from "mongoose";
 import mongoSanitize from "express-mongo-sanitize";
@@ -38,6 +39,9 @@ app.use(cookieParser());
 
 //Data Sanitization
 app.use(mongoSanitize());
+
+// Serve uploaded images as static files
+app.use("/uploads", express.static(path.resolve("src/uploads")));
 
 //Routes
 app.use("/api", authRouter);

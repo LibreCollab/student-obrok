@@ -119,25 +119,16 @@ const AddOrEditVendorForm = () => {
     setImageDialogOpen(false);
   };
 
-  const convertToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const fileReader = new FileReader();
-      fileReader.readAsDataURL(file);
-      fileReader.onload = () => resolve(fileReader.result);
-      fileReader.onerror = (error) => reject(error);
-    });
-  };
-
   const onSelectFileHandler = async (e) => {
     const file = e.target.files[0];
     if (!file) return;
 
     try {
-      const base64 = await convertToBase64(file);
-      const response = await axiosPrivate.post("/images", {
-        title: file.name,
-        data: base64,
-        mimeType: file.type,
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const response = await axiosPrivate.post("/images", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       setSelectedImageId(response.data._id);

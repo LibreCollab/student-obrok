@@ -8,7 +8,7 @@ const getAllVendors = async (req, res) => {
   try {
     const vendors = await VendorModel.find()
       .populate("deals")
-      .populate("image");
+      .populate("image", "title url mimeType");
 
     if (!vendors) return res.status(204).json({ message: "No vendors found." });
 
@@ -151,7 +151,7 @@ const getVendor = async (req, res) => {
   try {
     const vendor = await VendorModel.findOne({ _id: req.params.id })
       .populate("deals")
-      .populate("image")
+      .populate("image", "title url mimeType")
       .exec();
 
     if (!vendor) {

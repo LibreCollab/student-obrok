@@ -5,7 +5,6 @@ import cors from "cors";
 import mongoose from "mongoose";
 import mongoSanitize from "express-mongo-sanitize";
 import { authRouter } from "./routes/api/auth.js";
-import { dealsRouter } from "./routes/api/deals.js";
 import connectDB from "./config/connectDB.js";
 import credentials from "./middleware/credentials.js";
 import corsOptions from "./config/corsOptions.js";
@@ -14,6 +13,7 @@ import { refreshTokenRouter } from "./routes/api/refresh.js";
 import { logoutRouter } from "./routes/api/logout.js";
 import { vendorsRouter } from "./routes/api/vendors.js";
 import { imagesRouter } from "./routes/api/images.js";
+import { productsRouter } from "./routes/api/products.js";
 
 const PORT = process.env.PORT;
 const app = express();
@@ -47,9 +47,9 @@ app.use("/uploads", express.static(path.resolve("src/uploads")));
 app.use("/api", authRouter);
 app.use("/api", refreshTokenRouter);
 app.use("/api", logoutRouter);
-app.use("/api", dealsRouter);
 app.use("/api", vendorsRouter);
 app.use("/api", imagesRouter);
+app.use("/api", productsRouter);
 
 mongoose.connection.once("open", () => {
   console.log("Connected to MongoDB");

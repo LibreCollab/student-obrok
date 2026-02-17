@@ -1,21 +1,23 @@
 import { ThemeProvider } from "@emotion/react";
 import { Grid, createTheme, styled, useMediaQuery } from "@mui/material";
 import React, { useEffect, useState } from "react";
-import VendorDealsList from "../components/VendorDealsList";
-import { useParams } from "react-router-dom";
+import VendorProductsList from "../components/VendorProductsList";
+import { useParams, useNavigate, useLocation } from "react-router-dom";
 import axios from "../api/axios";
 import GlobalLoadingProgress from "../components/GlobalLoadingProgress";
-import DealSearchBar from "../components/DealSearchBar";
 import DashboardHeader from "../components/DashboardHeader";
+import ProductSearchBar from "../components/ProductSearchBar";
 
-const VendorDeals = () => {
+const VendorProducts = () => {
   const theme = createTheme();
   const [isLoading, setIsLoading] = useState(true);
   const [vendor, setVendor] = useState([]);
-  const [_, setError] = useState("");
-  const [deals, setDeals] = useState([]);
+  const [error, setError] = useState("");
+  const [products, setProducts] = useState([]);
   const params = useParams();
-  const [dealSearchTerm, setDealSearchTerm] = useState("");
+  const [productSearchTerm, setProductSearchTerm] = useState("");
+  const navigate = useNavigate();
+  const location = useLocation();
 
   useEffect(() => {
     let isMounted = true;
@@ -32,13 +34,15 @@ const VendorDeals = () => {
           {
             headers: { "Content-Type": "application/json" },
             withCredentials: true,
-          }
+          },
         );
-        isMounted && setVendor(vendorResponse.data);
-        isMounted && setDeals(vendorResponse.data.deals);
-        setIsLoading(false);
+        if (isMounted) {
+          setVendor(vendorResponse.data);
+          setProducts(vendorResponse.data.products || []);
+          setIsLoading(false);
+        }
       } catch (error) {
-        setError(error.response.data.message);
+        setError(error.response?.data?.message);
         navigate("/login", { state: { from: location }, replace: true });
       }
     };
@@ -52,8 +56,8 @@ const VendorDeals = () => {
     };
   }, []);
 
-  const handleDealSearchChange = (event) => {
-    setDealSearchTerm(event.target.value);
+  const handleProductSearchChange = (event) => {
+    setProductSearchTerm(event.target.value);
   };
 
   return (
@@ -63,20 +67,21 @@ const VendorDeals = () => {
       ) : (
         <ThemeProvider theme={theme}>
           <DashboardHeader theme={theme} />
-          <DealsToolbarGrid>
-            <DealSearchBar
+          <ToolbarGrid>
+            <ProductSearchBar
               theme={theme}
-              handleSearchChange={handleDealSearchChange}
+              handleSearchChange={handleProductSearchChange}
+              placeholder="Search products..."
             />
-          </DealsToolbarGrid>
+          </ToolbarGrid>
 
-          <VendorDealsList
+          <VendorProductsList
             theme={theme}
             vendor={vendor}
             setVendor={setVendor}
-            deals={deals}
-            searchTerm={dealSearchTerm}
-            setDeals={setDeals}
+            products={products}
+            searchTerm={productSearchTerm}
+            setProducts={setProducts}
           />
         </ThemeProvider>
       )}
@@ -84,11 +89,13 @@ const VendorDeals = () => {
   );
 };
 
-const DealsToolbarGrid = styled(Grid)(({ theme }) => ({
+const ToolbarGrid = styled(Grid)(({ theme }) => ({
   display: "flex",
   marginRight: "1vw",
-  justifyContent: useMediaQuery(theme.breakpoints.down("sm")) ? "center" : "space-between",
+  justifyContent: useMediaQuery(theme.breakpoints.down("sm"))
+    ? "center"
+    : "space-between",
   marginTop: !useMediaQuery(theme.breakpoints.down("sm")) && "10vh",
 }));
 
-export default VendorDeals;
+export default VendorProducts;

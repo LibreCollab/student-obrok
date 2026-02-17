@@ -24,8 +24,9 @@ import useAxiosPrivate from "../hooks/useAxiosPrivate";
 import { useNavigate, useLocation, useParams } from "react-router-dom";
 import axios from "../api/axios";
 import DashboardImageModal from "./DashboardImageModal";
+import { BASE_URL } from "../api/consts";
 
-const VendorDealsList = ({ theme, searchTerm, deals, setDeals }) => {
+const VendorProductsList = ({ theme, searchTerm, products, setProducts }) => {
   const navigate = useNavigate();
   const location = useLocation();
   const axiosPrivate = useAxiosPrivate();
@@ -35,34 +36,33 @@ const VendorDealsList = ({ theme, searchTerm, deals, setDeals }) => {
   const [isLoading, setIsLoading] = useState(false);
   const params = useParams();
 
-  const handleRemoveDeal = async (dealId) => {
+  const handleRemoveProduct = async (productId) => {
     let confirmed = window.confirm(
-      "Are you sure you want to remove this deal?"
+      "Are you sure you want to remove this product?",
     );
 
-    if (!confirmed) {
-      return;
-    }
+    if (!confirmed) return;
 
     setIsLoading(true);
 
     try {
-      await axiosPrivate.delete("/deals", {
+      await axiosPrivate.delete("/products", {
         data: JSON.stringify({
-          id: dealId,
+          id: productId,
         }),
       });
 
-      const dealsResponse = await axios.get(`/vendors/${params.vendorId}`, {
+      const vendorResponse = await axios.get(`/vendors/${params.vendorId}`, {
         headers: { "Content-Type": "application/json" },
         withCredentials: true,
       });
 
-      setDeals(dealsResponse.data.deals);
+      setProducts(vendorResponse.data.products || []);
       setIsLoading(false);
     } catch (error) {
-      setError(error.response.data.message);
+      setError(error.response?.data?.message);
       navigate("/login", { state: { from: location }, replace: true });
+      setIsLoading(false);
     }
   };
 
@@ -70,18 +70,18 @@ const VendorDealsList = ({ theme, searchTerm, deals, setDeals }) => {
     setPage(newPage);
   };
 
-  const handleEditDeal = (dealId) => {
-    navigate(`/dashboard/deal/${dealId}`);
+  const handleEditProduct = (productId) => {
+    navigate(`/dashboard/product/${productId}`);
   };
 
-  const searchTermInDeal = (deal, term) => {
-    return Object.values(deal).some((value) =>
-      value?.toString().toLowerCase().includes(term.toLowerCase())
+  const searchTermInProduct = (product, term) => {
+    return Object.values(product).some((value) =>
+      value?.toString().toLowerCase().includes(term.toLowerCase()),
     );
   };
 
-  const filteredDeals = deals.filter((deal) =>
-    searchTermInDeal(deal, searchTerm)
+  const filteredProducts = products.filter((product) =>
+    searchTermInProduct(product, searchTerm),
   );
 
   return (
@@ -89,46 +89,59 @@ const VendorDealsList = ({ theme, searchTerm, deals, setDeals }) => {
       {isSmallScreen ? (
         <Grid container spacing={2}>
           {!isLoading
-            ? filteredDeals.slice(page * 5, page * 5 + 5).map((deal, index) => (
-                <Grid item xs={12} key={deal._id}>
-                  <Card sx={{ marginTop: 2 }}>
-                    <CardContent>
-                      <Box display="flex" justifyContent="center">
-                        <Typography variant="h6" style={{ fontWeight: "bold" }}>
-                          {deal.title}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" justifyContent="center">
-                        <Typography variant="body2">
-                          <strong>Price: </strong>
-                          {deal.price}
-                        </Typography>
-                      </Box>
-                      <Box display="flex" justifyContent="center" marginTop={2}>
-                        <DashboardImageModal
-                          variant={"contained"}
-                          image={deal.image}
-                          imageTitle={deal.imageTitle}
-                        />
-                        <EditDealButton
-                          variant="contained"
-                          onClick={() => handleEditDeal(deal._id)}
+            ? filteredProducts
+                .slice(page * 5, page * 5 + 5)
+                .map((product, index) => (
+                  <Grid item xs={12} key={product._id}>
+                    <Card sx={{ marginTop: 2 }}>
+                      <CardContent>
+                        <Box display="flex" justifyContent="center">
+                          <Typography
+                            variant="h6"
+                            style={{ fontWeight: "bold" }}
+                          >
+                            {product.title}
+                          </Typography>
+                        </Box>
+                        <Box display="flex" justifyContent="center">
+                          <Typography variant="body2">
+                            <strong>Price: </strong>
+                            {product.price}
+                          </Typography>
+                        </Box>
+                        <Box
+                          display="flex"
+                          justifyContent="center"
+                          marginTop={2}
                         >
-                          <EditIcon />
-                        </EditDealButton>
-                        <RemoveDealButton
-                          variant="outlined"
-                          color="inherit"
-                          onClick={() => handleRemoveDeal(deal._id)}
-                        >
-                          <DeleteIcon />
-                        </RemoveDealButton>
-                      </Box>
-                    </CardContent>
-                  </Card>
-                </Grid>
-              ))
-            : Array(Math.min(5, filteredDeals.length))
+                          <DashboardImageModal
+                            variant={"contained"}
+                            image={
+                              product.image
+                                ? `${BASE_URL}${product.image.url}`
+                                : ""
+                            }
+                            imageTitle={product.image?.title || "Product Image"}
+                          />
+                          <EditButton
+                            variant="contained"
+                            onClick={() => handleEditProduct(product._id)}
+                          >
+                            <EditIcon />
+                          </EditButton>
+                          <RemoveButton
+                            variant="outlined"
+                            color="inherit"
+                            onClick={() => handleRemoveProduct(product._id)}
+                          >
+                            <DeleteIcon />
+                          </RemoveButton>
+                        </Box>
+                      </CardContent>
+                    </Card>
+                  </Grid>
+                ))
+            : Array(Math.min(5, filteredProducts.length || 5))
                 .fill()
                 .map((_, index) => (
                   <Grid item xs={12} key={index}>
@@ -144,15 +157,11 @@ const VendorDealsList = ({ theme, searchTerm, deals, setDeals }) => {
       ) : (
         <>
           {error && <Error variant="p">{error}</Error>}
-          <VendorDealsTableContainer>
+          <TableWrapper>
             <Table
               sx={{
-                "& thead th": {
-                  backgroundColor: "#f2f2f2",
-                },
-                "& tbody tr:nth-of-type(even)": {
-                  backgroundColor: "#f2f2f2",
-                },
+                "& thead th": { backgroundColor: "#f2f2f2" },
+                "& tbody tr:nth-of-type(even)": { backgroundColor: "#f2f2f2" },
               }}
             >
               <TableHead>
@@ -169,29 +178,35 @@ const VendorDealsList = ({ theme, searchTerm, deals, setDeals }) => {
               <TableBody>
                 {!isLoading ? (
                   <>
-                    {filteredDeals
+                    {filteredProducts
                       .slice(page * 5, page * 5 + 5)
-                      .map((deal, index) => (
-                        <TableRow key={deal._id}>
+                      .map((product, index) => (
+                        <TableRow key={product._id}>
                           <TableCell>{index + 1}</TableCell>
-                          <TableCell>{deal.title}</TableCell>
-                          <TableCell>{deal.price}</TableCell>
+                          <TableCell>{product.title}</TableCell>
+                          <TableCell>{product.price}</TableCell>
                           <TableCell>
                             <DashboardImageModal
-                              imageTitle={deal.imageTitle}
-                              image={deal.image}
+                              imageTitle={
+                                product.image?.title || "Product Image"
+                              }
+                              image={
+                                product.image
+                                  ? `${BASE_URL}${product.image.url}`
+                                  : ""
+                              }
                             />
                           </TableCell>
                           <TableCell style={{ textAlign: "right" }}>
                             <IconButton
                               color="inherit"
-                              onClick={() => handleEditDeal(deal._id)}
+                              onClick={() => handleEditProduct(product._id)}
                             >
                               <EditIcon />
                             </IconButton>
                             <IconButton
                               color="inherit"
-                              onClick={() => handleRemoveDeal(deal._id)}
+                              onClick={() => handleRemoveProduct(product._id)}
                             >
                               <DeleteIcon />
                             </IconButton>
@@ -200,14 +215,14 @@ const VendorDealsList = ({ theme, searchTerm, deals, setDeals }) => {
                       ))}
                   </>
                 ) : (
-                  Array(Math.min(5, filteredDeals.length))
+                  Array(Math.min(5, filteredProducts.length || 5))
                     .fill()
                     .map((_, index) => (
                       <TableRow key={index}>
                         {Array(6)
                           .fill()
-                          .map((_, index) => (
-                            <TableCell key={index}>
+                          .map((_, idx) => (
+                            <TableCell key={idx}>
                               <Skeleton
                                 animation="wave"
                                 height={40}
@@ -222,20 +237,20 @@ const VendorDealsList = ({ theme, searchTerm, deals, setDeals }) => {
             </Table>
             <TablePagination
               component="div"
-              count={deals.length}
+              count={products.length}
               page={page}
               onPageChange={handleChangePage}
               rowsPerPage={5}
               rowsPerPageOptions={[]}
             />
-          </VendorDealsTableContainer>
+          </TableWrapper>
         </>
       )}
     </>
   );
 };
 
-const VendorDealsTableContainer = styled(TableContainer)(({ theme }) => ({
+const TableWrapper = styled(TableContainer)(() => ({
   width: "98vw",
   marginLeft: "auto",
   marginRight: "auto",
@@ -243,23 +258,23 @@ const VendorDealsTableContainer = styled(TableContainer)(({ theme }) => ({
   borderRadius: 10,
 }));
 
-const Error = styled(Typography)(({ theme }) => ({
+const Error = styled(Typography)(() => ({
   color: "crimson",
   width: "100%",
   display: "flex",
   justifyContent: "center",
 }));
 
-const EditDealButton = styled(Button)(({ theme }) => ({
+const EditButton = styled(Button)(() => ({
   backgroundColor: "black",
   marginLeft: "3vw",
   textTransform: "none",
   color: "white",
 }));
 
-const RemoveDealButton = styled(Button)(({ theme }) => ({
+const RemoveButton = styled(Button)(() => ({
   marginLeft: "3vw",
   textTransform: "none",
 }));
 
-export default VendorDealsList;
+export default VendorProductsList;

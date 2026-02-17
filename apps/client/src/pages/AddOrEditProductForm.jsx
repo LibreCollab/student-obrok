@@ -15,11 +15,21 @@ import {
   Select,
   MenuItem,
   styled,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItemButton,
+  ListItemIcon,
+  ListItemText,
 } from "@mui/material";
 import ImageIcon from "@mui/icons-material/Image";
 import { Container } from "@mui/system";
 import CloseIcon from "@mui/icons-material/Close";
 import SaveIcon from "@mui/icons-material/Save";
+import PhotoLibraryIcon from "@mui/icons-material/PhotoLibrary";
+import CheckIcon from "@mui/icons-material/Check";
 import DashboardHeader from "../components/DashboardHeader";
 import { useNavigate, useParams } from "react-router-dom";
 import FileUploader from "../components/FileUploader";
@@ -29,43 +39,49 @@ import GlobalLoadingProgress from "../components/GlobalLoadingProgress";
 import "../assets/quill.css";
 import "../assets/quill-snow.css";
 
-const AddOrEditDealForm = () => {
+const modules = {
+  toolbar: [
+    [{ header: [1, 2, 3, 4, 5, 6, false] }],
+    ["bold", "italic", "underline", "strike", "blockquote"],
+    [
+      { list: "ordered" },
+      { list: "bullet" },
+      { indent: "-1" },
+      { indent: "+1" },
+    ],
+    ["link"],
+    ["clean"],
+  ],
+};
+
+const AddOrEditProductForm = () => {
   const navigate = useNavigate();
   const axiosPrivate = useAxiosPrivate();
   const theme = createTheme();
   const params = useParams();
-  const [deal, setDeal] = useState({});
+  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
+
+  const [product, setProduct] = useState({});
   const [vendors, setVendors] = useState([]);
   const [errorBag, setErrorBag] = useState("");
-  const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
-  const [selectedVendorId, setSelectedVendorId] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [selectedVendorId, setSelectedVendorId] = useState(null);
 
-  const modules = {
-    toolbar: [
-      [{ header: [1, 2, 3, 4, 5, 6, false] }],
-      ["bold", "italic", "underline", "strike", "blockquote"],
-      [
-        { list: "ordered" },
-        { list: "bullet" },
-        { indent: "-1" },
-        { indent: "+1" },
-      ],
-      ["link"],
-      ["clean"],
-    ],
-  };
+  const [selectedImageId, setSelectedImageId] = useState("");
+  const [selectedImageTitle, setSelectedImageTitle] = useState("");
+  const [imageDialogOpen, setImageDialogOpen] = useState(false);
+  const [images, setImages] = useState([]);
 
   const handleChange = (event) => {
     if (event.target === undefined) {
-      return setDeal({ ...deal, description: `${event}` });
+      return setProduct((prev) => ({ ...prev, description: `${event}` }));
     }
     const { name, value } = event.target;
     if (name === "vendor") {
       setSelectedVendorId(value);
     } else {
-      setDeal({ ...deal, [name]: value });
+      setProduct((prev) => ({ ...prev, [name]: value }));
     }
   };
 
@@ -73,14 +89,20 @@ const AddOrEditDealForm = () => {
     let isMounted = true;
     const controller = new AbortController();
 
-    const fetchDeal = async () => {
+    const fetchProduct = async () => {
       try {
-        const response = await axiosPrivate(`/deals/${params.dealId}`, {
+        const response = await axiosPrivate(`/products/${params.productId}`, {
           signal: controller.signal,
         });
-        isMounted && setDeal(response.data);
-        isMounted && setIsEditing(true);
-        setIsLoading(false);
+        if (isMounted) {
+          setProduct(response.data);
+          setIsEditing(true);
+          if (response.data?.image) {
+            setSelectedImageId(response.data.image._id);
+            setSelectedImageTitle(response.data.image.title);
+          }
+          setIsLoading(false);
+        }
       } catch (error) {
         console.error(error);
         navigate("/login", { state: { from: location }, replace: true });
@@ -93,7 +115,7 @@ const AddOrEditDealForm = () => {
           headers: { "Content-Type": "application/json" },
           withCredentials: true,
         });
-        isMounted && setVendors(response.data);
+        if (isMounted) setVendors(response.data);
       } catch (error) {
         console.error(error);
         navigate("/login", { state: { from: location }, replace: true });
@@ -102,66 +124,86 @@ const AddOrEditDealForm = () => {
 
     fetchVendors();
 
-    if (params?.dealId) {
+    if (params?.productId) {
       setIsLoading(true);
-      fetchDeal();
+      fetchProduct();
     }
 
     return () => {
       isMounted = false;
       controller.abort();
-      setIsLoading(false);
     };
   }, []);
 
-  const handleCancel = () => navigate("/dashboard");
-
-  const transformDealData = () => {
-    let dealData = {};
-    if (params?.dealId) dealData.id = params.dealId;
-    if (deal.title) dealData.title = deal.title;
-    if (deal.description) dealData.description = deal.description;
-    if (deal.price) dealData.price = deal.price;
-    if (deal?.image) dealData.image = deal.image;
-    if (deal?.imageTitle) dealData.imageTitle = deal.imageTitle;
-    return dealData;
+  const fetchImages = async () => {
+    try {
+      const response = await axiosPrivate("/images");
+      setImages(response.data || []);
+    } catch (err) {
+      console.error(err);
+      setImages([]);
+    }
   };
 
-  const handleSubmit = async (event) => {
-    event.preventDefault();
-    const transformedData = transformDealData();
-    if (selectedVendorId) transformedData.vendor = selectedVendorId;
+  const handleOpenImageDialog = async () => {
+    await fetchImages();
+    setImageDialogOpen(true);
+  };
 
-    try {
-      if (params?.dealId) {
-        await axiosPrivate.put("/deals", transformedData);
-      } else {
-        await axiosPrivate.post("/deals", transformedData);
-      }
-      return navigate("/dashboard");
-    } catch (error) {
-      setErrorBag(error.response?.data?.message || "Error saving deal");
-    }
+  const handleSelectImage = (image) => {
+    setSelectedImageId(image._id);
+    setSelectedImageTitle(image.title);
+    setImageDialogOpen(false);
   };
 
   const onSelectFileHandler = async (e) => {
     const file = e.target.files[0];
-    const fileName = file.name;
-    const convertedImage = await convertToBase64(file);
-    setDeal({ ...deal, image: convertedImage, imageTitle: fileName });
+    if (!file) return;
+
+    try {
+      const formData = new FormData();
+      formData.append("image", file);
+
+      const response = await axiosPrivate.post("/images", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+      });
+
+      setSelectedImageId(response.data._id);
+      setSelectedImageTitle(response.data.title);
+    } catch (err) {
+      console.error(err);
+      setErrorBag("Failed to upload image.");
+    }
   };
 
   const onDeleteFileHandler = () => {
-    setDeal({ ...deal, image: "", imageTitle: "" });
+    setSelectedImageId("");
+    setSelectedImageTitle("");
   };
 
-  const convertToBase64 = (file) => {
-    return new Promise((resolve, reject) => {
-      const fileReader = new FileReader();
-      fileReader.readAsDataURL(file);
-      fileReader.onload = () => resolve(fileReader.result);
-      fileReader.onerror = (error) => reject(error);
-    });
+  const handleCancel = () => navigate("/dashboard");
+
+  const handleSubmit = async (event) => {
+    event.preventDefault();
+
+    const productData = {};
+    if (params?.productId) productData.id = params.productId;
+    if (product.title) productData.title = product.title;
+    if (product.description) productData.description = product.description;
+    if (product.price) productData.price = product.price;
+    if (selectedVendorId) productData.vendor = selectedVendorId;
+    if (selectedImageId) productData.image = selectedImageId;
+
+    try {
+      if (params?.productId) {
+        await axiosPrivate.put("/products", productData);
+      } else {
+        await axiosPrivate.post("/products", productData);
+      }
+      return navigate("/dashboard");
+    } catch (error) {
+      setErrorBag(error.response?.data?.message || "Error saving product");
+    }
   };
 
   return (
@@ -181,13 +223,14 @@ const AddOrEditDealForm = () => {
           >
             <Container maxWidth="md">
               <form autoComplete="off" onSubmit={handleSubmit}>
-                <DealForm elevation={5}>
+                <ProductForm elevation={5}>
                   <Box
                     display="flex"
                     flexDirection="column"
                     gap={3}
                     width="100%"
                   >
+                    {/* Title */}
                     <Box width="100%">
                       {errorBag === "Title is required!" && (
                         <Typography sx={{ color: "crimson" }}>
@@ -199,16 +242,20 @@ const AddOrEditDealForm = () => {
                         label="Title"
                         variant="outlined"
                         fullWidth
-                        value={deal?.title || ""}
+                        value={product?.title || ""}
                         onChange={handleChange}
                         sx={{
                           "& .MuiOutlinedInput-root": {
-                            "&.Mui-focused fieldset": { borderColor: "black" },
+                            "&.Mui-focused fieldset": {
+                              borderColor: "black",
+                            },
                           },
                           "& label.Mui-focused": { color: "black" },
                         }}
                       />
                     </Box>
+
+                    {/* Price + Vendor */}
                     <Box
                       display="flex"
                       gap={3}
@@ -227,7 +274,7 @@ const AddOrEditDealForm = () => {
                           variant="outlined"
                           type="number"
                           fullWidth
-                          value={deal?.price || ""}
+                          value={product?.price || ""}
                           onChange={handleChange}
                           sx={{
                             "& .MuiOutlinedInput-root": {
@@ -241,18 +288,15 @@ const AddOrEditDealForm = () => {
                       </Box>
 
                       <Box flex={1}>
-                        {errorBag &&
-                          (errorBag.includes("Vendor") ? (
-                            <Typography sx={{ color: "crimson" }}>
-                              {errorBag}
-                            </Typography>
-                          ) : null)}
+                        {errorBag?.includes("Vendor") && (
+                          <Typography sx={{ color: "crimson" }}>
+                            {errorBag}
+                          </Typography>
+                        )}
                         <FormControl fullWidth>
                           <InputLabel
                             id="vendor-select-label"
-                            sx={{
-                              "&.Mui-focused": { color: "black" },
-                            }}
+                            sx={{ "&.Mui-focused": { color: "black" } }}
                           >
                             Vendor
                           </InputLabel>
@@ -266,9 +310,7 @@ const AddOrEditDealForm = () => {
                             fullWidth
                             sx={{
                               "&.Mui-focused .MuiOutlinedInput-notchedOutline":
-                                {
-                                  borderColor: "black",
-                                },
+                                { borderColor: "black" },
                             }}
                           >
                             {vendors.map((vendor) => (
@@ -280,12 +322,14 @@ const AddOrEditDealForm = () => {
                         </FormControl>
                       </Box>
                     </Box>
-                    {deal?.imageTitle && (
+
+                    {/* Selected Image Preview */}
+                    {selectedImageTitle && (
                       <Box width="100%">
                         <TextField
-                          label="Cover Image"
+                          label="Selected Image"
                           variant="outlined"
-                          value={deal?.imageTitle || ""}
+                          value={selectedImageTitle}
                           fullWidth
                           disabled
                           InputProps={{
@@ -298,18 +342,47 @@ const AddOrEditDealForm = () => {
                         />
                       </Box>
                     )}
+
+                    {/* Image Upload (optional) */}
                     <Box width="100%">
-                      {errorBag === "Cover image is required!" && (
-                        <Typography sx={{ color: "crimson" }}>
-                          {errorBag}
-                        </Typography>
-                      )}
                       <FileUploader
                         onSelectFile={onSelectFileHandler}
                         onDeleteFile={onDeleteFileHandler}
-                        accept={".jpeg, .jpg, .png, .webp"}
+                        accept=".jpeg, .jpg, .png, .webp"
                       />
+                      <Box
+                        display="flex"
+                        gap={2}
+                        alignItems="center"
+                        flexWrap="wrap"
+                        mt={2}
+                      >
+                        <Typography
+                          sx={{ color: "text.secondary", fontSize: 14 }}
+                        >
+                          or select an existing one:
+                        </Typography>
+                        <SelectImageButton
+                          variant="outlined"
+                          onClick={handleOpenImageDialog}
+                          startIcon={<PhotoLibraryIcon />}
+                        >
+                          Select Image
+                        </SelectImageButton>
+                        {selectedImageId && (
+                          <Button
+                            variant="text"
+                            size="small"
+                            onClick={onDeleteFileHandler}
+                            sx={{ color: "crimson", textTransform: "none" }}
+                          >
+                            Remove image
+                          </Button>
+                        )}
+                      </Box>
                     </Box>
+
+                    {/* Description */}
                     <Box width="100%">
                       {errorBag === "Description is required!" && (
                         <Typography sx={{ color: "crimson" }}>
@@ -318,7 +391,7 @@ const AddOrEditDealForm = () => {
                       )}
                       <QuillWrapper>
                         <ReactQuill
-                          value={deal?.description || ""}
+                          value={product?.description || ""}
                           onChange={(event) => handleChange(event)}
                           theme="snow"
                           modules={modules}
@@ -326,7 +399,7 @@ const AddOrEditDealForm = () => {
                       </QuillWrapper>
                     </Box>
                   </Box>
-                </DealForm>
+                </ProductForm>
 
                 <Box
                   sx={{ display: "flex", justifyContent: "flex-end", gap: 2 }}
@@ -334,26 +407,73 @@ const AddOrEditDealForm = () => {
                   <CancelButton variant="text" onClick={handleCancel}>
                     <CloseIcon sx={{ marginRight: "5px" }} /> Cancel
                   </CancelButton>
-                  <AddDealButton variant="contained" type="submit">
+                  <SubmitButton variant="contained" type="submit">
                     <SaveIcon sx={{ marginRight: "5px" }} /> Submit
-                  </AddDealButton>
+                  </SubmitButton>
                 </Box>
               </form>
             </Container>
           </Box>
+
+          {/* Image Select Dialog */}
+          <Dialog
+            open={imageDialogOpen}
+            onClose={() => setImageDialogOpen(false)}
+            fullWidth
+            maxWidth="sm"
+          >
+            <DialogTitle>Select an Image</DialogTitle>
+            <DialogContent dividers>
+              {images.length === 0 ? (
+                <Typography color="text.secondary">
+                  No images uploaded yet. Upload one first.
+                </Typography>
+              ) : (
+                <List>
+                  {images.map((img) => (
+                    <ListItemButton
+                      key={img._id}
+                      selected={selectedImageId === img._id}
+                      onClick={() => handleSelectImage(img)}
+                    >
+                      <ListItemIcon>
+                        {selectedImageId === img._id ? (
+                          <CheckIcon />
+                        ) : (
+                          <ImageIcon />
+                        )}
+                      </ListItemIcon>
+                      <ListItemText
+                        primary={img.title}
+                        secondary={img.mimeType}
+                      />
+                    </ListItemButton>
+                  ))}
+                </List>
+              )}
+            </DialogContent>
+            <DialogActions>
+              <Button
+                onClick={() => setImageDialogOpen(false)}
+                sx={{ color: "black", textTransform: "none" }}
+              >
+                Close
+              </Button>
+            </DialogActions>
+          </Dialog>
         </ThemeProvider>
       )}
     </>
   );
 };
 
-const DealForm = styled(Paper)(({ theme }) => ({
+const ProductForm = styled(Paper)(({ theme }) => ({
   padding: 50,
   marginBottom: 25,
   [theme.breakpoints.down("sm")]: { padding: 25 },
 }));
 
-const AddDealButton = styled(Button)(() => ({
+const SubmitButton = styled(Button)(() => ({
   textTransform: "none",
   backgroundColor: "black",
   "&:hover": { backgroundColor: "rgba(0, 0, 0, 0.8)" },
@@ -364,38 +484,20 @@ const CancelButton = styled(Button)(() => ({
   textTransform: "none",
 }));
 
-const QuillWrapper = styled(Box)(({ theme }) => ({
-  width: "100%",
-  "& .quill": {
-    height: "100%",
-    display: "flex",
-    flexDirection: "column",
-  },
-  "& .ql-container": {
-    flexGrow: 1,
-    overflow: "auto",
-  },
-  height: "250px",
-  marginBottom: "3vh",
-  [theme.breakpoints.down("md")]: {
-    height: "250px",
-    marginBottom: "10vh",
-  },
-  "@media (min-width: 375px) and (max-width: 375px) and (min-height: 667px) and (max-height: 667px)":
-    {
-      height: "250px",
-      marginBottom: "10vh",
-    },
-  "@media (min-width: 360px) and (max-width: 360px) and (min-height: 740px) and (max-height: 740px)":
-    {
-      height: "250px",
-      marginBottom: "12vh",
-    },
-  "@media (min-width: 768px) and (max-width: 768px) and (min-height: 1024px) and (max-height: 1024px)":
-    {
-      height: "250px",
-      marginBottom: "5vh",
-    },
+const SelectImageButton = styled(Button)(() => ({
+  textTransform: "none",
+  color: "black",
+  borderColor: "black",
+  "&:hover": { borderColor: "rgba(0,0,0,0.8)" },
 }));
 
-export default AddOrEditDealForm;
+const QuillWrapper = styled(Box)(({ theme }) => ({
+  width: "100%",
+  "& .quill": { height: "100%", display: "flex", flexDirection: "column" },
+  "& .ql-container": { flexGrow: 1, overflow: "auto" },
+  height: "250px",
+  marginBottom: "3vh",
+  [theme.breakpoints.down("md")]: { height: "250px", marginBottom: "10vh" },
+}));
+
+export default AddOrEditProductForm;

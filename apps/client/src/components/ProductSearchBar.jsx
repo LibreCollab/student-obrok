@@ -2,13 +2,13 @@ import React from "react";
 import { TextField, InputAdornment, useMediaQuery } from "@mui/material";
 import SearchIcon from "@mui/icons-material/Search";
 
-const VendorSearchBar = ({ theme, handleSearchChange }) => {
+const ProductSearchBar = ({ theme, handleSearchChange }) => {
   const isSmallScreen = useMediaQuery(theme.breakpoints.down("sm"));
 
   return (
     <TextField
       hiddenLabel
-      placeholder="Search vendors..."
+      placeholder="Search products..."
       variant="outlined"
       onChange={handleSearchChange}
       sx={{
@@ -21,6 +21,8 @@ const VendorSearchBar = ({ theme, handleSearchChange }) => {
           color: "black",
         },
         width: isSmallScreen ? "212px" : "20%",
+        marginTop: isSmallScreen ? "5vh" : 0,
+        marginLeft: "1vw",
         justifyContent: "end",
       }}
       size="small"
@@ -35,4 +37,4 @@ const VendorSearchBar = ({ theme, handleSearchChange }) => {
   );
 };
 
-export default VendorSearchBar;
+export default ProductSearchBar;

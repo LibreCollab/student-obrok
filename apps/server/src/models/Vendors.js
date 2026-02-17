@@ -8,7 +8,7 @@ const VendorSchema = new mongoose.Schema({
     ref: "image",
     required: true,
   },
-  deals: [{ type: mongoose.Schema.Types.ObjectId, ref: "deals" }],
+  products: [{ type: mongoose.Schema.Types.ObjectId, ref: "products" }],
 });
 
 export const VendorModel = mongoose.model("vendor", VendorSchema);

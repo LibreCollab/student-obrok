@@ -91,7 +91,7 @@ const MapProductInfoModal = ({ products }) => {
                       {currentProduct.title}
                     </Typography>
                     <Box className="image-container">
-                      {currentProduct.image ? (
+                      {currentProduct.image && currentProduct.image.url ? (
                         <img
                           src={`${BASE_URL}${currentProduct.image.url}`}
                           alt={currentProduct.title}

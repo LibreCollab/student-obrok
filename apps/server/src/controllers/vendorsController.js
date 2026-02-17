@@ -7,7 +7,10 @@ import { Parser } from "json2csv";
 const getAllVendors = async (req, res) => {
   try {
     const vendors = await VendorModel.find()
-      .populate("products")
+      .populate({
+        path: "products",
+        populate: { path: "image", select: "title url mimeType" },
+      })
       .populate("image", "title url mimeType");
 
     if (!vendors) return res.status(204).json({ message: "No vendors found." });
@@ -131,8 +134,11 @@ const getVendor = async (req, res) => {
     return res.status(400).json({ message: "Invalid ID format." });
 
   try {
-    const vendor = await VendorModel.findById(req.params.id)
-      .populate("products")
+    const vendor = await VendorModel.findOne({ _id: req.params.id })
+      .populate({
+        path: "products",
+        populate: { path: "image", select: "title url mimeType" },
+      })
       .populate("image", "title url mimeType")
       .exec();
 
@@ -140,7 +146,6 @@ const getVendor = async (req, res) => {
       return res
         .status(404)
         .json({ message: `No vendor matches ID ${req.params.id}.` });
-
     res.status(200).json(vendor);
   } catch (err) {
     console.error(err);

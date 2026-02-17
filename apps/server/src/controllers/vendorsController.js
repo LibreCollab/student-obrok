@@ -1,4 +1,4 @@
-import { DealModel } from "../models/Deals.js";
+import { ProductModel } from "../models/Products.js";
 import { VendorModel } from "../models/Vendors.js";
 import { ImageModel } from "../models/Images.js";
 import mongoose from "mongoose";
@@ -7,7 +7,7 @@ import { Parser } from "json2csv";
 const getAllVendors = async (req, res) => {
   try {
     const vendors = await VendorModel.find()
-      .populate("deals")
+      .populate("products")
       .populate("image", "title url mimeType");
 
     if (!vendors) return res.status(204).json({ message: "No vendors found." });
@@ -20,49 +20,40 @@ const getAllVendors = async (req, res) => {
 };
 
 const createNewVendor = async (req, res) => {
-  if (!req?.body?.name) {
+  if (!req?.body?.name)
     return res.status(400).json({ message: "Name is required!" });
-  }
 
   if (
     !req?.body?.location ||
-    req?.body?.location[0] === "" ||
-    req?.body?.location[1] === "" ||
     !req?.body?.location[0] ||
     !req?.body?.location[1]
-  ) {
+  )
     return res
       .status(400)
       .json({ message: "Location coordinates are required!" });
-  }
 
-  if (!req?.body?.image) {
+  if (!req?.body?.image)
     return res.status(400).json({ message: "Cover image is required!" });
-  }
 
-  if (!mongoose.Types.ObjectId.isValid(req.body.image)) {
+  if (!mongoose.Types.ObjectId.isValid(req.body.image))
     return res.status(400).json({ message: "Invalid image ID format." });
-  }
 
   const imageExists = await ImageModel.findById(req.body.image);
-  if (!imageExists) {
+  if (!imageExists)
     return res.status(404).json({ message: "Selected image not found." });
-  }
 
-  if (req?.body?.deals) {
+  if (req?.body?.products)
     return res
       .status(400)
-      .json({ message: "Can't attach deals when creating vendor!" });
-  }
+      .json({ message: "Can't attach products when creating vendor!" });
 
   try {
     const result = await VendorModel.create({
       name: req.body.name,
       location: req.body.location,
       image: req.body.image,
-      deals: null,
+      products: null,
     });
-
     res.status(201).json(result);
   } catch (err) {
     console.error(err);
@@ -71,34 +62,30 @@ const createNewVendor = async (req, res) => {
 };
 
 const updateVendor = async (req, res) => {
-  if (!req?.body?.id) {
+  if (!req?.body?.id)
     return res.status(400).json({ message: "ID is required." });
-  }
 
-  if (!mongoose.Types.ObjectId.isValid(req.body.id)) {
+  if (!mongoose.Types.ObjectId.isValid(req.body.id))
     return res.status(400).json({ message: "Invalid ID format." });
-  }
 
   try {
-    const vendor = await VendorModel.findOne({ _id: req.body.id }).exec();
-
-    if (!vendor) {
+    const vendor = await VendorModel.findById(req.body.id).exec();
+    if (!vendor)
       return res
         .status(404)
         .json({ message: `No vendor matches ID ${req.body.id}.` });
-    }
 
     if (req.body?.name) vendor.name = req.body.name;
     if (req.body?.location) vendor.location = req.body.location;
 
     if (req.body?.image) {
-      if (!mongoose.Types.ObjectId.isValid(req.body.image)) {
+      if (!mongoose.Types.ObjectId.isValid(req.body.image))
         return res.status(400).json({ message: "Invalid image ID format." });
-      }
+
       const imageExists = await ImageModel.findById(req.body.image);
-      if (!imageExists) {
+      if (!imageExists)
         return res.status(404).json({ message: "Selected image not found." });
-      }
+
       vendor.image = req.body.image;
     }
 
@@ -114,26 +101,22 @@ const deleteVendor = async (req, res) => {
   if (!req?.body?.id)
     return res.status(400).json({ message: "ID is required." });
 
-  if (!mongoose.Types.ObjectId.isValid(req.body.id)) {
+  if (!mongoose.Types.ObjectId.isValid(req.body.id))
     return res.status(400).json({ message: "Invalid ID format." });
-  }
 
   try {
-    const vendor = await VendorModel.findOne({ _id: req.body.id }).exec();
-
-    if (!vendor) {
+    const vendor = await VendorModel.findById(req.body.id).exec();
+    if (!vendor)
       return res
         .status(404)
         .json({ message: `No vendor matches ID ${req.body.id}.` });
+
+    if (vendor.products && vendor.products.length > 0) {
+      await ProductModel.deleteMany({ _id: { $in: vendor.products } }).exec();
     }
 
-    if (vendor.deals && vendor.deals.length > 0) {
-      const dealIds = vendor.deals;
-      await DealModel.deleteMany({ _id: { $in: dealIds } }).exec();
-    }
-
-    const result = await vendor.deleteOne();
-    res.status(200).json(result);
+    await vendor.deleteOne();
+    res.status(200).json({ message: "Vendor deleted." });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Internal server error." });
@@ -144,21 +127,19 @@ const getVendor = async (req, res) => {
   if (!req?.params?.id)
     return res.status(400).json({ message: "ID parameter is required." });
 
-  if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+  if (!mongoose.Types.ObjectId.isValid(req.params.id))
     return res.status(400).json({ message: "Invalid ID format." });
-  }
 
   try {
-    const vendor = await VendorModel.findOne({ _id: req.params.id })
-      .populate("deals")
+    const vendor = await VendorModel.findById(req.params.id)
+      .populate("products")
       .populate("image", "title url mimeType")
       .exec();
 
-    if (!vendor) {
+    if (!vendor)
       return res
         .status(404)
         .json({ message: `No vendor matches ID ${req.params.id}.` });
-    }
 
     res.status(200).json(vendor);
   } catch (err) {
@@ -169,31 +150,29 @@ const getVendor = async (req, res) => {
 
 const generateReport = async (req, res) => {
   try {
-    let vendors = [];
     const vendorsData = await VendorModel.find({})
-      .populate("deals")
+      .populate("products")
       .populate("image", "title");
 
-    vendorsData.forEach((vendor) => {
-      const { name, location, deals, image } = vendor;
-      let dealsData = "";
+    const vendors = vendorsData.map((vendor) => {
+      const { name, location, products, image } = vendor;
 
-      if (deals !== null) {
-        deals.forEach((deal) => {
-          const { title, price } = deal;
-          dealsData = dealsData.concat(`${title}, ${price} ден\n`);
+      let productsData = "";
+      if (products?.length) {
+        products.forEach((product) => {
+          productsData += `${product.title}, ${product.price} ден\n`;
         });
       }
 
-      vendors.push({
+      return {
         name,
         location,
-        image: image?.title || "",
-        deals: dealsData,
-      });
+        image: image ? `https://obrok.net/uploads/${image.filename}` : "",
+        products: productsData,
+      };
     });
 
-    const csvFields = ["Name", "Location", "Image", "Deals"];
+    const csvFields = ["Name", "Location", "Image", "Products"];
     const csvParser = new Parser({ csvFields });
     const csvData = csvParser.parse(vendors);
 
@@ -202,7 +181,6 @@ const generateReport = async (req, res) => {
       "Content-Disposition",
       "attachment; filename=VendorsReport.csv",
     );
-
     res.status(200).end(csvData);
   } catch (err) {
     console.error(err);

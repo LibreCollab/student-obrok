@@ -14,6 +14,7 @@ import { refreshTokenRouter } from "./routes/api/refresh.js";
 import { logoutRouter } from "./routes/api/logout.js";
 import { vendorsRouter } from "./routes/api/vendors.js";
 import { imagesRouter } from "./routes/api/images.js";
+import { productsRouter } from "./routes/api/products.js";
 
 const PORT = process.env.PORT;
 const app = express();
@@ -50,6 +51,7 @@ app.use("/api", logoutRouter);
 app.use("/api", dealsRouter);
 app.use("/api", vendorsRouter);
 app.use("/api", imagesRouter);
+app.use("/api", productsRouter);
 
 mongoose.connection.once("open", () => {
   console.log("Connected to MongoDB");

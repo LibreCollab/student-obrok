@@ -153,21 +153,21 @@ const Home = () => {
         <>
           <ModeSelectorContainer direction="row" spacing={1}>
             <ModeButton
-              active={routingMode === "walking" ? 1 : 0}
+              active={routingMode === "walking" ? true : false}
               onClick={() => setRoutingMode("walking")}
               disabled={routingMode === "walking"}
             >
               <DirectionsWalkIcon />
             </ModeButton>
             <ModeButton
-              active={routingMode === "car" ? 1 : 0}
+              active={routingMode === "car" ? true : false}
               onClick={() => setRoutingMode("car")}
               disabled={routingMode === "car"}
             >
               <DirectionsCarIcon />
             </ModeButton>
             <ModeButton
-              active={routingMode === "cycling" ? 1 : 0}
+              active={routingMode === "cycling" ? true : false}
               onClick={() => setRoutingMode("cycling")}
               disabled={routingMode === "cycling"}
             >

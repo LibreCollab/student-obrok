@@ -19,9 +19,10 @@ For the root directory .env file you're gonna need:
 - PORT=5000
 
 If you want to configure SLL for HTTPS you're gonna need:
-- CERTBOT_EMAIL="your-email@example.com
+- CERTBOT_EMAIL="your-email@example.com"
 
 For the client app you're not gonna need a .env file, just create/edit the consts.js file in apps/client/src/api/ and add these values:
-- BASE_URL = "http://localhost:5000/api";
+- BASE_URL = "http://localhost:5000";
+- BASE_API_URL = "http://localhost:5000/api";
 - OSRM_URL = "http://localhost:5001/route/v1";
 - RELEASE_VERSION = "Release: Example Date";

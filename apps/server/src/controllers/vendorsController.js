@@ -1,12 +1,14 @@
 import { DealModel } from "../models/Deals.js";
 import { VendorModel } from "../models/Vendors.js";
+import { ImageModel } from "../models/Images.js";
 import mongoose from "mongoose";
-
 import { Parser } from "json2csv";
 
 const getAllVendors = async (req, res) => {
   try {
-    const vendors = await VendorModel.find().populate("deals");
+    const vendors = await VendorModel.find()
+      .populate("deals")
+      .populate("image", "title url mimeType");
 
     if (!vendors) return res.status(204).json({ message: "No vendors found." });
 
@@ -26,16 +28,25 @@ const createNewVendor = async (req, res) => {
     !req?.body?.location ||
     req?.body?.location[0] === "" ||
     req?.body?.location[1] === "" ||
-    !req?.body.location[0] ||
-    !req?.body.location[1]
+    !req?.body?.location[0] ||
+    !req?.body?.location[1]
   ) {
     return res
       .status(400)
       .json({ message: "Location coordinates are required!" });
   }
 
-  if (!req?.body?.image || !req?.body?.imageTitle) {
+  if (!req?.body?.image) {
     return res.status(400).json({ message: "Cover image is required!" });
+  }
+
+  if (!mongoose.Types.ObjectId.isValid(req.body.image)) {
+    return res.status(400).json({ message: "Invalid image ID format." });
+  }
+
+  const imageExists = await ImageModel.findById(req.body.image);
+  if (!imageExists) {
+    return res.status(404).json({ message: "Selected image not found." });
   }
 
   if (req?.body?.deals) {
@@ -49,7 +60,6 @@ const createNewVendor = async (req, res) => {
       name: req.body.name,
       location: req.body.location,
       image: req.body.image,
-      imageTitle: req.body.imageTitle,
       deals: null,
     });
 
@@ -80,8 +90,17 @@ const updateVendor = async (req, res) => {
 
     if (req.body?.name) vendor.name = req.body.name;
     if (req.body?.location) vendor.location = req.body.location;
-    if (req.body?.image) vendor.image = req.body.image;
-    if (req.body?.imageTitle) vendor.imageTitle = req.body.imageTitle;
+
+    if (req.body?.image) {
+      if (!mongoose.Types.ObjectId.isValid(req.body.image)) {
+        return res.status(400).json({ message: "Invalid image ID format." });
+      }
+      const imageExists = await ImageModel.findById(req.body.image);
+      if (!imageExists) {
+        return res.status(404).json({ message: "Selected image not found." });
+      }
+      vendor.image = req.body.image;
+    }
 
     const result = await vendor.save();
     res.status(200).json(result);
@@ -109,10 +128,7 @@ const deleteVendor = async (req, res) => {
     }
 
     if (vendor.deals && vendor.deals.length > 0) {
-      // Retrieve all deal IDs associated with the vendor
       const dealIds = vendor.deals;
-
-      // Delete all deal documents corresponding to the retrieved deal IDs
       await DealModel.deleteMany({ _id: { $in: dealIds } }).exec();
     }
 
@@ -135,6 +151,7 @@ const getVendor = async (req, res) => {
   try {
     const vendor = await VendorModel.findOne({ _id: req.params.id })
       .populate("deals")
+      .populate("image", "title url mimeType")
       .exec();
 
     if (!vendor) {
@@ -153,31 +170,37 @@ const getVendor = async (req, res) => {
 const generateReport = async (req, res) => {
   try {
     let vendors = [];
-    const vendorsData = await VendorModel.find({}).populate("deals");
+    const vendorsData = await VendorModel.find({})
+      .populate("deals")
+      .populate("image", "title");
 
     vendorsData.forEach((vendor) => {
-      const { name, location, deals } = vendor;
+      const { name, location, deals, image } = vendor;
       let dealsData = "";
 
       if (deals !== null) {
         deals.forEach((deal) => {
           const { title, price } = deal;
-
           dealsData = dealsData.concat(`${title}, ${price} ден\n`);
         });
       }
 
-      vendors.push({ name, location, deals: dealsData });
+      vendors.push({
+        name,
+        location,
+        image: image?.title || "",
+        deals: dealsData,
+      });
     });
 
-    const csvFields = ["Name", "Location", "Deals"];
+    const csvFields = ["Name", "Location", "Image", "Deals"];
     const csvParser = new Parser({ csvFields });
     const csvData = csvParser.parse(vendors);
 
     res.setHeader("Content-Type", "text/csv");
     res.setHeader(
       "Content-Disposition",
-      "attatchment: filename=VendorsReport.csv"
+      "attachment; filename=VendorsReport.csv",
     );
 
     res.status(200).end(csvData);

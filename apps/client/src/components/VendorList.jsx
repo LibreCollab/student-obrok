@@ -25,6 +25,7 @@ import { useNavigate, useLocation } from "react-router-dom";
 import axios from "../api/axios";
 import DashboardImageModal from "./DashboardImageModal";
 import LocalOfferIcon from "@mui/icons-material/LocalOffer";
+import { BASE_URL } from "../api/consts";
 
 const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
   const navigate = useNavigate();
@@ -37,7 +38,7 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
 
   const handleRemoveVendor = async (vendorId) => {
     let confirmed = window.confirm(
-      "Are you sure you want to remove this vendor?\nThis WILL REMOVE all of the deals that are by this vendor."
+      "Are you sure you want to remove this vendor?\nThis WILL REMOVE all of the deals that are by this vendor.",
     );
 
     if (!confirmed) {
@@ -87,7 +88,7 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
           {
             headers: { "Content-Type": "application/json" },
             withCredentials: true,
-          }
+          },
         );
         if (isMounted) {
           setVendors(response.data);
@@ -125,12 +126,12 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
 
   const searchTermInVendor = (deal, term) => {
     return Object.values(deal).some((value) =>
-      value?.toString().toLowerCase().includes(term.toLowerCase())
+      value?.toString().toLowerCase().includes(term.toLowerCase()),
     );
   };
 
   const filteredVendors = vendors.filter((deal) =>
-    searchTermInVendor(deal, searchTerm)
+    searchTermInVendor(deal, searchTerm),
   );
 
   return (
@@ -158,12 +159,11 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
                             {vendor.location.join(", ")}
                           </Typography>
                         </Box>
-
                         <VendorButtonsGrid>
                           <DashboardImageModal
                             variant={"contained"}
-                            image={vendor.image}
-                            imageTitle={vendor.imageTitle}
+                            image={`${BASE_URL}${vendor?.image?.url}`}
+                            imageTitle={vendor?.image?.title}
                             className="vendor-button"
                           />
                           <ViewVendorButton
@@ -245,8 +245,8 @@ const VendorstList = ({ theme, searchTerm, setDeals, vendors, setVendors }) => {
                           <TableCell>{vendor.location.join(", ")}</TableCell>
                           <TableCell>
                             <DashboardImageModal
-                              imageTitle={vendor.imageTitle}
-                              image={vendor.image}
+                              imageTitle={vendor?.image?.title}
+                              image={`${BASE_URL}${vendor?.image?.url}`}
                             />
                           </TableCell>
                           <TableCell>
